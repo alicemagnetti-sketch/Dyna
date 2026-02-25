@@ -1,5 +1,6 @@
 "use client";
-import { Pill, Clock, Calendar, ChevronRight, Plus, Droplet } from "lucide-react";
+
+import { Pill, Clock, Plus, Droplet } from "lucide-react";
 
 export function TherapyView() {
   const therapies = [
@@ -133,8 +134,8 @@ export function TherapyView() {
                   )}
                 </div>
               </div>
-              
-              <button className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-300 transition-colors">
+
+              <button className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-300 transition-colors" aria-label="Modifica">
                 <Edit2 size={16} />
               </button>
             </div>

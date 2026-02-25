@@ -1,10 +1,12 @@
 "use client";
 
+import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { X, Pencil, Activity, Droplet, Pill, FileText, CalendarClock } from "lucide-react";
+import { X, Pencil, Activity, Droplet, Pill, FileText, CalendarClock, ChevronDown, ChevronUp, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { useDayEntries } from "@/context/DayEntriesContext";
 import {
   type DayEntry,
   type Appointment,
@@ -35,6 +37,9 @@ export function DayOverviewModal({
   entry,
   onEdit,
 }: DayOverviewModalProps) {
+  const { setEntry } = useDayEntries();
+  const [expandedAptId, setExpandedAptId] = useState<string | null>(null);
+
   const hasData =
     entry.painLevel !== null ||
     entry.periodFlow !== null ||
@@ -93,7 +98,7 @@ export function DayOverviewModal({
                 </div>
               ) : (
                 <>
-                  {/* Appuntamenti */}
+                  {/* Appuntamenti (collapsed con espandi / dettagli / modifica / elimina) */}
                   {(entry.appointments?.length ?? 0) > 0 && (
                     <section>
                       <h3 className="flex items-center gap-2 text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">
@@ -101,18 +106,84 @@ export function DayOverviewModal({
                         Appuntamenti
                       </h3>
                       <ul className="space-y-2">
-                        {(entry.appointments as Appointment[]).map((apt) => (
-                          <li
-                            key={apt.id}
-                            className="p-3 rounded-2xl bg-gray-50 text-[#14443F]"
-                          >
-                            <span className="font-medium block">{getAppointmentTypeLabel(apt)}</span>
-                            <span className="text-sm text-gray-500">
-                              {(apt as Appointment).time}
-                              {"place" in apt && apt.place ? ` · ${apt.place}` : ""}
-                            </span>
-                          </li>
-                        ))}
+                        {(entry.appointments as Appointment[]).map((apt) => {
+                          const isExpanded = expandedAptId === apt.id;
+                          return (
+                            <li
+                              key={apt.id}
+                              className="rounded-2xl bg-gray-50 overflow-hidden"
+                            >
+                              <button
+                                type="button"
+                                onClick={() => setExpandedAptId(isExpanded ? null : apt.id)}
+                                className="w-full flex items-center justify-between gap-2 p-3 text-left"
+                              >
+                                <div className="min-w-0">
+                                  <span className="font-medium text-[#14443F] block truncate">
+                                    {getAppointmentTypeLabel(apt)}
+                                  </span>
+                                  <span className="text-sm text-gray-500">
+                                    {apt.time}
+                                    {apt.place ? ` · ${apt.place}` : ""}
+                                  </span>
+                                </div>
+                                {isExpanded ? (
+                                  <ChevronUp size={18} className="text-gray-400 shrink-0" />
+                                ) : (
+                                  <ChevronDown size={18} className="text-gray-400 shrink-0" />
+                                )}
+                              </button>
+                              <AnimatePresence>
+                                {isExpanded && (
+                                  <motion.div
+                                    initial={{ height: 0, opacity: 0 }}
+                                    animate={{ height: "auto", opacity: 1 }}
+                                    exit={{ height: 0, opacity: 0 }}
+                                    className="border-t border-gray-100"
+                                  >
+                                    <div className="p-3 pt-2 text-sm text-gray-600 space-y-1">
+                                      <p><span className="text-gray-500">Data:</span> {apt.date}</p>
+                                      <p><span className="text-gray-500">Ora:</span> {apt.time}</p>
+                                      {apt.place ? (
+                                        <p><span className="text-gray-500">Luogo:</span> {apt.place}</p>
+                                      ) : null}
+                                    </div>
+                                    <div className="flex gap-2 p-3 pt-0">
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          onClose();
+                                          onEdit();
+                                        }}
+                                        className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl border border-[#14443F] text-[#14443F] text-sm font-medium"
+                                      >
+                                        <Pencil size={14} />
+                                        Modifica
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          const next = {
+                                            ...entry,
+                                            appointments: (entry.appointments ?? []).filter(
+                                              (a) => (a as Appointment).id !== apt.id
+                                            ),
+                                          };
+                                          setEntry(date, next);
+                                          setExpandedAptId(null);
+                                        }}
+                                        className="flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl border border-red-200 text-red-600 text-sm font-medium hover:bg-red-50"
+                                      >
+                                        <Trash2 size={14} />
+                                        Elimina
+                                      </button>
+                                    </div>
+                                  </motion.div>
+                                )}
+                              </AnimatePresence>
+                            </li>
+                          );
+                        })}
                       </ul>
                     </section>
                   )}

@@ -17,7 +17,7 @@ export interface Appointment {
   place: string;
 }
 
-const APPOINTMENT_TYPE_LABELS: Record<AppointmentType, string> = {
+export const APPOINTMENT_TYPE_LABELS: Record<AppointmentType, string> = {
   ginecologo: "Ginecologo",
   nutrizionista: "Nutrizionista",
   fisioterapista: "Fisioterapista",
@@ -148,4 +148,33 @@ export function getNextAppointment(
     if (aptDate >= now) return item;
   }
   return null;
+}
+
+/** Tutti gli appuntamenti futuri (data+ora >= adesso), ordinati, per notifiche */
+export function getUpcomingAppointments(
+  entries: Record<string, DayEntry>,
+  limitDays = 7
+): { dateKey: string; appointment: Appointment }[] {
+  const now = new Date();
+  const list: { dateKey: string; appointment: Appointment }[] = [];
+  for (const [k, entry] of Object.entries(entries)) {
+    for (const apt of entry.appointments ?? []) {
+      const key = (apt as Appointment).date || k;
+      list.push({ dateKey: key, appointment: apt as Appointment });
+    }
+  }
+  list.sort((a, b) => {
+    const d = a.dateKey.localeCompare(b.dateKey);
+    if (d !== 0) return d;
+    return ((a.appointment as Appointment).time || "").localeCompare((b.appointment as Appointment).time || "");
+  });
+  const end = new Date(now);
+  end.setDate(end.getDate() + limitDays);
+  const endKey = dateKey(end);
+  return list.filter((item) => {
+    const d = parseDateKey(item.dateKey);
+    const [h = 0, m = 0] = ((item.appointment as Appointment).time || "00:00").split(":").map(Number);
+    const aptDate = new Date(d.getFullYear(), d.getMonth(), d.getDate(), h, m);
+    return aptDate >= now && item.dateKey <= endKey;
+  });
 }

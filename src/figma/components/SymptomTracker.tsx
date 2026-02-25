@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { X, Save, Plus, CalendarClock, Droplet } from "lucide-react";
+import { X, Save, Plus, CalendarClock, Droplet, ChevronDown, ChevronUp, Pencil, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useDayEntries } from "@/context/DayEntriesContext";
 import {
@@ -51,6 +51,85 @@ function Droplets({ count }: { count: number }) {
   );
 }
 
+function AppointmentEditForm({
+  apt,
+  onSave,
+  onUpdate,
+  onCancel,
+}: {
+  apt: Appointment;
+  onSave: () => void;
+  onUpdate: (field: keyof Appointment, value: string) => void;
+  onCancel: () => void;
+}) {
+  return (
+    <div className="p-4 space-y-3 bg-white">
+      <label className="block text-xs font-medium text-gray-600">Tipo</label>
+      <select
+        value={apt.type}
+        onChange={(e) => onUpdate("type", e.target.value)}
+        className="w-full p-3 pr-10 rounded-xl border border-gray-200 text-[#14443F] bg-white bg-no-repeat bg-[length:1.25rem] bg-[right_0.75rem_center] appearance-none"
+        style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%2314443F' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")`,
+        }}
+      >
+        {APPOINTMENT_TYPES.map((opt) => (
+          <option key={opt.value} value={opt.value}>
+            {opt.label}
+          </option>
+        ))}
+      </select>
+      {apt.type === "altro" && (
+        <input
+          type="text"
+          value={apt.typeOther ?? ""}
+          onChange={(e) => onUpdate("typeOther", e.target.value)}
+          placeholder="Specifica"
+          className="w-full p-3 rounded-xl border border-gray-200 text-[#14443F] placeholder:text-gray-400"
+        />
+      )}
+      <label className="block text-xs font-medium text-gray-600">Giorno</label>
+      <input
+        type="date"
+        value={apt.date}
+        onChange={(e) => onUpdate("date", e.target.value)}
+        className="w-full p-3 rounded-xl border border-gray-200 text-[#14443F]"
+      />
+      <label className="block text-xs font-medium text-gray-600">Ora</label>
+      <input
+        type="time"
+        value={apt.time}
+        onChange={(e) => onUpdate("time", e.target.value)}
+        className="w-full p-3 rounded-xl border border-gray-200 text-[#14443F]"
+      />
+      <label className="block text-xs font-medium text-gray-600">Luogo</label>
+      <input
+        type="text"
+        value={apt.place}
+        onChange={(e) => onUpdate("place", e.target.value)}
+        placeholder="Indirizzo o studio"
+        className="w-full p-3 rounded-xl border border-gray-200 text-[#14443F] placeholder:text-gray-400"
+      />
+      <div className="flex gap-2 pt-2">
+        <button
+          type="button"
+          onClick={onCancel}
+          className="flex-1 py-2 rounded-xl border border-gray-300 text-gray-600"
+        >
+          Annulla
+        </button>
+        <button
+          type="button"
+          onClick={onSave}
+          className="flex-1 py-2 rounded-xl bg-[#14443F] text-white font-medium"
+        >
+          Salva
+        </button>
+      </div>
+    </div>
+  );
+}
+
 /** Normalizza appuntamenti legacy (title, time) in formato nuovo (type, date, place) */
 function normalizeAppointments(appointments: unknown[], fallbackDate: string): Appointment[] {
   return (appointments ?? []).map((a: unknown) => {
@@ -76,6 +155,8 @@ export function SymptomTrackerModal({ isOpen, onClose, date }: SymptomTrackerMod
   const [notes, setNotes] = useState("");
   const [periodFlow, setPeriodFlow] = useState<"light" | "medium" | "heavy" | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [expandedAptId, setExpandedAptId] = useState<string | null>(null);
+  const [editingAptId, setEditingAptId] = useState<string | null>(null);
   const [newApt, setNewApt] = useState<{
     type: AppointmentType;
     typeOther: string;
@@ -99,8 +180,10 @@ export function SymptomTrackerModal({ isOpen, onClose, date }: SymptomTrackerMod
       setNotes(entry.notes ?? "");
       setPeriodFlow(entry.periodFlow ?? null);
       setNewApt((prev) => ({ ...prev, date: key }));
+      setExpandedAptId(null);
+      setEditingAptId(null);
     }
-  }, [date, isOpen]);
+  }, [date, isOpen, getEntry]);
 
   const updateAppointment = (id: string, field: keyof Appointment, value: string) => {
     setAppointments((prev) =>
@@ -198,29 +281,88 @@ export function SymptomTrackerModal({ isOpen, onClose, date }: SymptomTrackerMod
                   Appuntamenti
                 </h3>
                 <div className="space-y-2">
-                  {appointments.map((apt) => (
-                    <div
-                      key={apt.id}
-                      className="flex flex-col gap-1 p-3 rounded-2xl bg-gray-50 border border-gray-100"
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <span className="font-medium text-[#14443F]">
-                          {getAppointmentTypeLabel(apt)}
-                        </span>
+                  {appointments.map((apt) => {
+                    const isExpanded = expandedAptId === apt.id;
+                    const isEditing = editingAptId === apt.id;
+                    return (
+                      <div
+                        key={apt.id}
+                        className="rounded-2xl bg-gray-50 border border-gray-100 overflow-hidden"
+                      >
                         <button
                           type="button"
-                          onClick={() => removeAppointment(apt.id)}
-                          className="text-gray-400 hover:text-red-500 text-sm shrink-0"
+                          onClick={() => setExpandedAptId(isExpanded ? null : apt.id)}
+                          className="w-full flex items-center justify-between gap-2 p-3 text-left"
                         >
-                          Elimina
+                          <div className="min-w-0">
+                            <span className="font-medium text-[#14443F] block truncate">
+                              {getAppointmentTypeLabel(apt)}
+                            </span>
+                            <span className="text-xs text-gray-500">
+                              {apt.date} · {apt.time}
+                            </span>
+                          </div>
+                          {isExpanded ? (
+                            <ChevronUp size={20} className="text-gray-400 shrink-0" />
+                          ) : (
+                            <ChevronDown size={20} className="text-gray-400 shrink-0" />
+                          )}
                         </button>
+                        <AnimatePresence>
+                          {isExpanded && (
+                            <motion.div
+                              initial={{ height: 0, opacity: 0 }}
+                              animate={{ height: "auto", opacity: 1 }}
+                              exit={{ height: 0, opacity: 0 }}
+                              className="border-t border-gray-100"
+                            >
+                              {isEditing ? (
+                                <AppointmentEditForm
+                                  apt={apt}
+                                  onSave={() => setEditingAptId(null)}
+                                  onUpdate={(field, value) => updateAppointment(apt.id, field, value)}
+                                  onCancel={() => setEditingAptId(null)}
+                                />
+                              ) : (
+                                <>
+                                  <div className="p-3 pt-2 text-sm text-gray-600 space-y-1">
+                                    {apt.place ? (
+                                      <p><span className="text-gray-500">Luogo:</span> {apt.place}</p>
+                                    ) : null}
+                                    <p className="text-xs text-gray-500">
+                                      {apt.date} · {apt.time}
+                                      {apt.place ? ` · ${apt.place}` : ""}
+                                    </p>
+                                  </div>
+                                  <div className="flex gap-2 p-3 pt-0">
+                                    <button
+                                      type="button"
+                                      onClick={() => setEditingAptId(apt.id)}
+                                      className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl border border-[#14443F] text-[#14443F] text-sm font-medium"
+                                    >
+                                      <Pencil size={16} />
+                                      Modifica
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        removeAppointment(apt.id);
+                                        setExpandedAptId(null);
+                                      }}
+                                      className="flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl border border-red-200 text-red-600 text-sm font-medium hover:bg-red-50"
+                                    >
+                                      <Trash2 size={16} />
+                                      Elimina
+                                    </button>
+                                  </div>
+                                </>
+                              )}
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
                       </div>
-                      <div className="text-xs text-gray-500">
-                        {apt.date} · {apt.time}
-                        {apt.place ? ` · ${apt.place}` : ""}
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
 
                 <AnimatePresence>
@@ -239,7 +381,10 @@ export function SymptomTrackerModal({ isOpen, onClose, date }: SymptomTrackerMod
                         onChange={(e) =>
                           setNewApt((p) => ({ ...p, type: e.target.value as AppointmentType }))
                         }
-                        className="w-full p-3 rounded-xl border border-gray-200 text-[#14443F] bg-white"
+                        className="w-full p-3 pr-10 rounded-xl border border-gray-200 text-[#14443F] bg-white bg-no-repeat bg-[length:1.25rem] bg-[right_0.75rem_center] appearance-none"
+                        style={{
+                          backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%2314443F' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")`,
+                        }}
                       >
                         {APPOINTMENT_TYPES.map((opt) => (
                           <option key={opt.value} value={opt.value}>
@@ -318,7 +463,7 @@ export function SymptomTrackerModal({ isOpen, onClose, date }: SymptomTrackerMod
                     <button
                       key={level}
                       type="button"
-                      onClick={() => setPainLevel(level)}
+                      onClick={() => setPainLevel(painLevel === level ? null : level)}
                       className={cn(
                         "flex-1 py-3 px-2 rounded-2xl border-2 text-center text-sm font-bold transition-all",
                         painLevel === level
@@ -333,6 +478,15 @@ export function SymptomTrackerModal({ isOpen, onClose, date }: SymptomTrackerMod
                     </button>
                   ))}
                 </div>
+                {painLevel !== null && (
+                  <button
+                    type="button"
+                    onClick={() => setPainLevel(null)}
+                    className="mt-2 text-xs text-gray-500 hover:text-red-600 underline"
+                  >
+                    Rimuovi dolore
+                  </button>
+                )}
               </section>
 
               {/* 3. Note */}
@@ -375,6 +529,15 @@ export function SymptomTrackerModal({ isOpen, onClose, date }: SymptomTrackerMod
                     </button>
                   ))}
                 </div>
+                {periodFlow !== null && (
+                  <button
+                    type="button"
+                    onClick={() => setPeriodFlow(null)}
+                    className="mt-2 text-xs text-gray-500 hover:text-red-600 underline"
+                  >
+                    Rimuovi ciclo
+                  </button>
+                )}
               </section>
             </div>
 
