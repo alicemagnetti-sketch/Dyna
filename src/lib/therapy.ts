@@ -1,5 +1,6 @@
 /**
  * Tipi e costanti per il piano terapia (farmaci editabili).
+ * Deploy: terapie di oggi filtrate, giorno/notte creme, opzioni per formato.
  */
 
 export type TherapyFormType =

@@ -1,4 +1,5 @@
 "use client";
+/* Modifica farmaco: opzioni per formato (gocce, crema con Giorno/Notte, orali con ora e quantità) */
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";

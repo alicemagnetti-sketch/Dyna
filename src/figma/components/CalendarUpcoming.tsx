@@ -1,4 +1,5 @@
 "use client";
+/* Widget Terapie di oggi: solo farmaci da assumere oggi, dose solo orali, orario/giorno-notte se impostato */
 
 import { useMemo } from "react";
 import { CalendarClock, Pencil } from "lucide-react";

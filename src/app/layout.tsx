@@ -3,8 +3,8 @@ import "./globals.css";
 import { DayEntriesProvider } from "@/context/DayEntriesContext";
 import { TherapyPlanProvider } from "@/context/TherapyPlanContext";
 
-/** Incrementa quando fai deploy per verificare che Netlify serva la versione nuova */
-const APP_VERSION = "2.0";
+/** Versione app: incrementa a ogni deploy per verificare che Netlify serva la build nuova */
+const APP_VERSION = "3.0";
 
 export const metadata: Metadata = {
   title: "Dyna",

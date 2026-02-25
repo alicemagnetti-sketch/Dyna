@@ -35,6 +35,8 @@
   --chart-3: #F4A0A0;
   --chart-4: #E05A5A;
   --chart-5: #14443F;
+  --color-purple-500: #a855f7;
+  --color-pink-400: #f472b6;
 }
 
 @theme inline {

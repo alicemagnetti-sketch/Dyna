@@ -1,9 +1,10 @@
 "use client";
+/* Il tuo Piano: card con Giorno/Notte per creme, orario solo se impostato per orali */
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
-import { Clock, Plus, Pencil, FileText, Sun, Moon } from "lucide-react";
+import { Clock, Plus, Pencil, FileText, Sun, Moon, Pill } from "lucide-react";
 import { useTherapyPlan } from "@/context/TherapyPlanContext";
 import {
   type TherapyPlanItem,
@@ -31,19 +32,40 @@ function getColorBg(index: number): string {
   return getColor(index).split(" ")[0];
 }
 
+/** Classe per il pallino: purple usa var(--color-purple-500) per bg e color; pink usa var(--color-pink-400) per bg */
+function getDotClass(bgClass: string): string {
+  if (bgClass === "bg-purple-100") {
+    return "w-2 h-2 rounded-full bg-[var(--color-purple-500)] text-[var(--color-purple-500)]";
+  }
+  if (bgClass === "bg-pink-100") {
+    return "w-2 h-2 rounded-full bg-[var(--color-pink-400)]";
+  }
+  return `w-2 h-2 rounded-full ${bgClass}`;
+}
+
 function formatDuration(d: TherapyPlanItem["duration"]) {
   if (d.type === "days") return `${d.value} giorni`;
   if (d.type === "months") return `${d.value} mesi`;
   return `${d.value} giorni/mese`;
 }
 
-export function TherapyView() {
+interface TherapyViewProps {
+  openAddTherapy?: boolean;
+  onAddTherapyClose?: () => void;
+}
+
+export function TherapyView({ openAddTherapy, onAddTherapyClose }: TherapyViewProps = {}) {
   const { plan, history } = useTherapyPlan();
   const [editingId, setEditingId] = useState<number | null>(null);
   const [addingNew, setAddingNew] = useState(false);
 
   const activePlan = plan.filter((t) => !t.paused);
   const editingItem = editingId !== null ? plan.find((t) => t.id === editingId) ?? null : null;
+
+  // Apri modale "Aggiungi farmaco" se richiesto dal FAB (es. da tab Calendario)
+  useEffect(() => {
+    if (openAddTherapy) setAddingNew(true);
+  }, [openAddTherapy]);
 
   return (
     <div className="p-4 pt-8 space-y-6 pb-24">
@@ -60,14 +82,32 @@ export function TherapyView() {
       </div>
 
       <div className="space-y-4">
-        <div className="flex items-center justify-between px-2">
-          <h3 className="font-bold text-[#14443F] text-lg">Farmaci Attivi</h3>
-          <span className="text-xs font-bold text-[#5C8D89] bg-[#EBF5F0] px-3 py-1 rounded-full uppercase tracking-wide">
-            {activePlan.length} in corso
-          </span>
-        </div>
+        {plan.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
+            <div className="rounded-full bg-[#EBF5F0] p-6 mb-6" aria-hidden>
+              <Pill size={64} className="text-[#14443F]" strokeWidth={1.5} />
+            </div>
+            <p className="text-lg font-semibold text-[#14443F] mb-6">Non hai terapie attive</p>
+            <button
+              type="button"
+              onClick={() => setAddingNew(true)}
+              className="inline-flex items-center gap-2 px-5 py-3 bg-[#14443F] text-white font-medium rounded-full hover:bg-[#0f332f] transition-colors"
+              aria-label="Aggiungi un farmaco"
+            >
+              <Plus size={20} />
+              Aggiungi un farmaco
+            </button>
+          </div>
+        ) : (
+          <>
+            <div className="flex items-center justify-between px-2">
+              <h3 className="font-bold text-[#14443F] text-lg">Farmaci Attivi</h3>
+              <span className="text-xs font-bold text-[#5C8D89] bg-[#EBF5F0] px-3 py-1 rounded-full uppercase tracking-wide">
+                {activePlan.length} in corso
+              </span>
+            </div>
 
-        {plan.map((therapy, index) => {
+            {plan.map((therapy, index) => {
           const alternateTherapy = therapy.alternateWithId
             ? plan.find((t) => t.id === therapy.alternateWithId)
             : null;
@@ -137,10 +177,10 @@ export function TherapyView() {
                       <div className="mt-2 flex items-center gap-3 text-xs text-gray-500">
                         <span>Alternato con {alternateTherapy.name}</span>
                         <div className="flex items-center gap-0.5 shrink-0" aria-hidden>
-                          <span className={`w-2 h-2 rounded-full ${thisDotColor}`} />
-                          <span className={`w-2 h-2 rounded-full ${otherDotColor}`} />
-                          <span className={`w-2 h-2 rounded-full ${thisDotColor}`} />
-                          <span className={`w-2 h-2 rounded-full ${otherDotColor}`} />
+                          <span className={getDotClass(thisDotColor)} />
+                          <span className={getDotClass(otherDotColor)} />
+                          <span className={getDotClass(thisDotColor)} />
+                          <span className={getDotClass(otherDotColor)} />
                         </div>
                       </div>
                     )}
@@ -162,6 +202,8 @@ export function TherapyView() {
             </div>
           );
         })}
+          </>
+        )}
       </div>
 
       <div className="pt-4 border-t border-gray-100">
@@ -187,13 +229,16 @@ export function TherapyView() {
       <EditTherapyModal
         isOpen={editingId !== null || addingNew}
         onClose={() => {
+          const wasAddingNew = addingNew;
           setEditingId(null);
           setAddingNew(false);
+          if (wasAddingNew) onAddTherapyClose?.();
         }}
         therapy={addingNew ? null : editingItem}
         onSaved={() => {
           setEditingId(null);
           setAddingNew(false);
+          onAddTherapyClose?.();
         }}
       />
     </div>

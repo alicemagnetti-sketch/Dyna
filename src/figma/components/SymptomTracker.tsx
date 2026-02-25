@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { X, Save, Plus, CalendarClock, Droplet, ChevronDown, ChevronUp, Pencil, Trash2 } from "lucide-react";
+import { X, Save, Plus, CalendarClock, Droplet, ChevronDown, ChevronUp, Pencil, Trash2, Activity } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useDayEntries } from "@/context/DayEntriesContext";
 import {
@@ -18,14 +18,21 @@ interface SymptomTrackerModalProps {
   isOpen: boolean;
   onClose: () => void;
   date: Date;
+  /** Se true, alla prima apertura mostra subito il form "Aggiungi appuntamento" */
+  initialOpenAddForm?: boolean;
+  /** Se true, mostra solo la sezione appuntamenti (pannello Appuntamento da FAB) */
+  appointmentOnly?: boolean;
+  /** Se false, nasconde la riga "Aggiungi appuntamento" (pannello Sintomi da FAB) */
+  showAddAppointmentRow?: boolean;
 }
 
 const PAIN_LEVELS = [1, 2, 3, 4] as const;
+/** Stili per scala dolore: colori con contrasto WCAG AA (≥4.5:1) */
 const PAIN_STYLES: Record<number, string> = {
-  1: "bg-[#B5E4C4] text-[#0A332E] border-[#8CD6A3]",
-  2: "bg-[#FDE8B0] text-[#5C3D00] border-[#FBD982]",
-  3: "bg-[#F4A0A0] text-[#5C1414] border-[#EFA3A3]",
-  4: "bg-[#E05A5A] text-white border-[#C53030]",
+  1: "bg-[#B5E4C4] text-[#0A332E] border-[#7AB88E]",
+  2: "bg-[#FDE8B0] text-[#4A3000] border-[#F5D76E]",
+  3: "bg-[#F4A0A0] text-[#4A0F0F] border-[#E07A7A]",
+  4: "bg-[#B91C1C] text-white border-[#991B1B]",
 };
 
 const PERIOD_OPTIONS: { value: "light" | "medium" | "heavy"; label: string; drops: number }[] = [
@@ -148,7 +155,14 @@ function normalizeAppointments(appointments: unknown[], fallbackDate: string): A
   });
 }
 
-export function SymptomTrackerModal({ isOpen, onClose, date }: SymptomTrackerModalProps) {
+export function SymptomTrackerModal({
+  isOpen,
+  onClose,
+  date,
+  initialOpenAddForm,
+  appointmentOnly = false,
+  showAddAppointmentRow = true,
+}: SymptomTrackerModalProps) {
   const { getEntry, setEntry } = useDayEntries();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [painLevel, setPainLevel] = useState<number | null>(null);
@@ -182,8 +196,9 @@ export function SymptomTrackerModal({ isOpen, onClose, date }: SymptomTrackerMod
       setNewApt((prev) => ({ ...prev, date: key }));
       setExpandedAptId(null);
       setEditingAptId(null);
+      setShowAddForm(!!initialOpenAddForm);
     }
-  }, [date, isOpen, getEntry]);
+  }, [date, isOpen, getEntry, initialOpenAddForm]);
 
   const updateAppointment = (id: string, field: keyof Appointment, value: string) => {
     setAppointments((prev) =>
@@ -269,17 +284,21 @@ export function SymptomTrackerModal({ isOpen, onClose, date }: SymptomTrackerMod
               >
                 <X size={24} />
               </button>
-              <h2 className="text-lg font-bold text-[#14443F]">Sintomi e note</h2>
+              <h2 className="text-lg font-bold text-[#14443F]">
+                {appointmentOnly ? "Appuntamento" : "Sintomi e note"}
+              </h2>
               <div className="w-10" />
             </div>
 
             <div className="flex-1 overflow-y-auto p-6 space-y-8 pb-28">
               {/* 1. Appuntamenti */}
               <section>
+                {!appointmentOnly && showAddAppointmentRow && (
                 <h3 className="flex items-center gap-2 text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">
                   <CalendarClock size={18} />
                   Appuntamenti
                 </h3>
+                )}
                 <div className="space-y-2">
                   {appointments.map((apt) => {
                     const isExpanded = expandedAptId === apt.id;
@@ -365,6 +384,7 @@ export function SymptomTrackerModal({ isOpen, onClose, date }: SymptomTrackerMod
                   })}
                 </div>
 
+                {showAddAppointmentRow && (
                 <AnimatePresence>
                   {showAddForm ? (
                     <motion.div
@@ -451,28 +471,34 @@ export function SymptomTrackerModal({ isOpen, onClose, date }: SymptomTrackerMod
                     </button>
                   )}
                 </AnimatePresence>
+                )}
               </section>
 
-              {/* 2. Dolore */}
+              {!appointmentOnly && (
+              <>
+              {/* 2. Dolore (stessa struttura scala del Ciclo: icona + etichetta) */}
               <section>
-                <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">
-                  Dolore
+                <h3 className="flex items-center gap-2 text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">
+                  <Activity size={18} className="text-[#5C8D89]" />
+                  Scala dolore
                 </h3>
-                <div className="flex gap-2">
+                <p className="text-xs text-gray-500 mb-2">Seleziona l&apos;intensità del dolore.</p>
+                <div className="grid grid-cols-4 gap-2">
                   {PAIN_LEVELS.map((level) => (
                     <button
                       key={level}
                       type="button"
                       onClick={() => setPainLevel(painLevel === level ? null : level)}
                       className={cn(
-                        "flex-1 py-3 px-2 rounded-2xl border-2 text-center text-sm font-bold transition-all",
+                        "py-3 px-2 rounded-2xl border-2 text-center text-sm font-bold transition-all flex flex-col items-center gap-1",
                         painLevel === level
                           ? PAIN_STYLES[level]
                           : "border-gray-100 bg-gray-50 text-gray-400 hover:bg-gray-100"
                       )}
                     >
-                      <span className="block">{level}</span>
-                      <span className="block text-[10px] mt-0.5 opacity-90">
+                      <Activity size={18} className={painLevel === level ? "opacity-90" : "opacity-60"} aria-hidden />
+                      <span>{level}</span>
+                      <span className="text-[10px] font-medium opacity-90">
                         {PAIN_LABELS[level]}
                       </span>
                     </button>
@@ -539,6 +565,8 @@ export function SymptomTrackerModal({ isOpen, onClose, date }: SymptomTrackerMod
                   </button>
                 )}
               </section>
+              </>
+              )}
             </div>
 
             <div className="absolute bottom-0 left-0 right-0 p-6 pt-4 bg-white border-t border-gray-100 pb-8">
