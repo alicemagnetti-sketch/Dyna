@@ -34,15 +34,24 @@ interface DayEntriesContextValue {
 const DayEntriesContext = createContext<DayEntriesContextValue | null>(null);
 
 export function DayEntriesProvider({ children }: { children: React.ReactNode }) {
-  const [entries, setEntries] = useState<DayEntriesState>(loadFromStorage);
+  const [entries, setEntries] = useState<DayEntriesState>({});
+  const [hasHydrated, setHasHydrated] = useState(false);
 
+  // Load from localStorage only on client after mount (avoids SSR/hydration overwriting data)
   useEffect(() => {
+    setEntries(loadFromStorage());
+    setHasHydrated(true);
+  }, []);
+
+  // Persist only after we've loaded from storage, so we never write empty {} on first load
+  useEffect(() => {
+    if (!hasHydrated || typeof window === "undefined") return;
     try {
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
     } catch {
       // quota exceeded or private mode
     }
-  }, [entries]);
+  }, [entries, hasHydrated]);
 
   const getEntry = useCallback((date: Date): DayEntry => {
     const key = dateKey(date);
