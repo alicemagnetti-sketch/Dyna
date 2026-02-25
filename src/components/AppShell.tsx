@@ -5,15 +5,24 @@ import { Plus } from "lucide-react";
 import { Header } from "@/figma/components/Header";
 import { Calendar } from "@/figma/components/Calendar";
 import { SymptomTrackerModal } from "@/figma/components/SymptomTracker";
+import { DayOverviewModal } from "@/figma/components/DayOverviewModal";
 import { BottomNav } from "@/figma/components/BottomNav";
 import { TherapyView } from "@/figma/components/TherapyView";
 import { DiaryView } from "@/figma/components/DiaryView";
 import { ProfileView } from "@/figma/components/ProfileView";
+import { useDayEntries } from "@/context/DayEntriesContext";
 
 export default function AppShell() {
   const [activeTab, setActiveTab] = useState("calendar");
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [symptomModalOpen, setSymptomModalOpen] = useState(false);
+  const [dayOverviewModalOpen, setDayOverviewModalOpen] = useState(false);
+  const { getEntry } = useDayEntries();
+
+  const handleSelectDate = (date: Date) => {
+    setSelectedDate(date);
+    setDayOverviewModalOpen(true);
+  };
 
   return (
     <div className="min-h-dvh bg-[#F8FBF9] pb-24">
@@ -23,7 +32,7 @@ export default function AppShell() {
         <>
           <Calendar
             selectedDate={selectedDate}
-            onSelectDate={setSelectedDate}
+            onSelectDate={handleSelectDate}
           />
           <button
             onClick={() => setSymptomModalOpen(true)}
@@ -40,6 +49,14 @@ export default function AppShell() {
       {activeTab === "profile" && <ProfileView />}
 
       <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
+
+      <DayOverviewModal
+        isOpen={dayOverviewModalOpen}
+        onClose={() => setDayOverviewModalOpen(false)}
+        date={selectedDate}
+        entry={getEntry(selectedDate)}
+        onEdit={() => setSymptomModalOpen(true)}
+      />
 
       <SymptomTrackerModal
         isOpen={symptomModalOpen}

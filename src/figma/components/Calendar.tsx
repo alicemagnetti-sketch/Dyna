@@ -1,48 +1,55 @@
 "use client";
 import { useState } from "react";
-import { 
-  startOfMonth, 
-  endOfMonth, 
-  eachDayOfInterval, 
-  format, 
-  isSameDay, 
-  addMonths, 
-  subMonths, 
+import {
+  startOfMonth,
+  endOfMonth,
+  eachDayOfInterval,
+  format,
+  isSameDay,
+  addMonths,
+  subMonths,
   startOfWeek,
   endOfWeek,
   isSameMonth,
-  addDays,
-  isToday
+  isToday,
 } from "date-fns";
 import { it } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, Droplet, Star, Pill } from "lucide-react";
-import { motion, AnimatePresence } from "motion/react";
-import { cn } from "@/lib/utils"; 
-
-// Mock data for Dyna
-// Pain levels: 0 (gray) to 4 (red)
-const mockData = [
-  { date: new Date(2023, 9, 1), pain: 2, period: false, therapy: true },
-  { date: new Date(2023, 9, 2), pain: 3, period: false, therapy: true },
-  { date: new Date(2023, 9, 3), pain: 1, period: true, therapy: true },
-  { date: new Date(2023, 9, 4), pain: 0, period: true, therapy: false }, 
-  { date: new Date(2023, 9, 5), pain: 4, period: true, therapy: true },
-];
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { useDayEntries } from "@/context/DayEntriesContext";
 
 interface CalendarProps {
   selectedDate: Date;
   onSelectDate: (date: Date) => void;
 }
 
-export function Calendar({ 
-  selectedDate, 
-  onSelectDate, 
+/** Colori heatmap dolore: 1 Basso → 4 Intenso. null = nessun dato (cella neutra). */
+function getPainCellColor(painLevel: number | null): string {
+  if (painLevel === null) return "bg-white";
+  switch (painLevel) {
+    case 1:
+      return "bg-[#B5E4C4]"; // Basso
+    case 2:
+      return "bg-[#FDE8B0]"; // Medio
+    case 3:
+      return "bg-[#F4A0A0]"; // Alto
+    case 4:
+      return "bg-[#E05A5A]"; // Intenso
+    default:
+      return "bg-white";
+  }
+}
+
+export function Calendar({
+  selectedDate,
+  onSelectDate,
 }: CalendarProps) {
   const [currentMonth, setCurrentMonth] = useState(new Date());
+  const { getEntry } = useDayEntries();
 
   const firstDayCurrentMonth = startOfMonth(currentMonth);
   const days = eachDayOfInterval({
-    start: startOfWeek(firstDayCurrentMonth, { weekStartsOn: 1 }), 
+    start: startOfWeek(firstDayCurrentMonth, { weekStartsOn: 1 }),
     end: endOfWeek(endOfMonth(currentMonth), { weekStartsOn: 1 }),
   });
 
@@ -50,33 +57,6 @@ export function Calendar({
 
   const nextMonth = () => setCurrentMonth(addMonths(currentMonth, 1));
   const prevMonth = () => setCurrentMonth(subMonths(currentMonth, 1));
-
-  // Helper to get simulated data for a day
-  const getDayData = (day: Date) => {
-    const dayNum = day.getDate();
-    // Simulate pain levels based on day number for visual variety
-    let painLevel = 0;
-    if (dayNum % 7 === 0) painLevel = 4;
-    else if (dayNum % 5 === 0) painLevel = 3;
-    else if (dayNum % 3 === 0) painLevel = 2;
-    else if (dayNum % 2 === 0) painLevel = 1;
-    
-    const hasPeriod = dayNum > 10 && dayNum < 15;
-    const takenTherapy = dayNum % 3 !== 0; 
-    
-    return { painLevel, hasPeriod, takenTherapy };
-  };
-
-  const getPainColor = (level: number) => {
-    switch(level) {
-      case 0: return "bg-[#E8E8E8]"; // Nessuno (Grigio neutro)
-      case 1: return "bg-[#B5E4C4]"; // Basso (Verde menta)
-      case 2: return "bg-[#FDE8B0]"; // Medio (Giallo ambra)
-      case 3: return "bg-[#F4A0A0]"; // Alto (Arancio-rosso tenue)
-      case 4: return "bg-[#E05A5A]"; // Intenso (Rosso acceso)
-      default: return "bg-[#E8E8E8]";
-    }
-  };
 
   return (
     <div className="bg-white rounded-3xl p-6 shadow-sm mx-4 mt-6">
@@ -102,65 +82,50 @@ export function Calendar({
         ))}
       </div>
 
-      <div className="grid grid-cols-7 gap-y-4">
-        {days.map((day, dayIdx) => {
-          const { painLevel, hasPeriod, takenTherapy } = getDayData(day);
+      <div className="grid grid-cols-7 gap-1">
+        {days.map((day) => {
+          const entry = getEntry(day);
+          const painLevel = entry.painLevel;
           const isSelected = isSameDay(day, selectedDate);
           const isCurrentMonth = isSameMonth(day, currentMonth);
           const isTodayDate = isToday(day);
 
           return (
-            <div key={day.toString()} className="flex flex-col items-center justify-center relative h-14">
+            <div key={day.toString()} className="flex flex-col items-center justify-center min-h-14">
               <button
                 onClick={() => onSelectDate(day)}
                 className={cn(
-                  "w-10 h-10 flex flex-col items-center justify-center rounded-2xl text-sm font-medium transition-all relative z-10",
-                  !isCurrentMonth && "text-gray-300 opacity-50",
-                  isCurrentMonth && !isSelected && "text-gray-700 hover:bg-gray-50",
-                  isSelected && "bg-[#14443F] text-white shadow-md transform scale-105",
-                  isTodayDate && !isSelected && "border-2 border-[#14443F] text-[#14443F]",
+                  "w-full min-h-12 flex flex-col items-center justify-center rounded-2xl text-sm font-medium transition-all",
+                  isCurrentMonth ? getPainCellColor(painLevel) : "bg-gray-50",
+                  !isCurrentMonth && "text-gray-300 opacity-60",
+                  isCurrentMonth && "text-gray-800",
+                  isCurrentMonth && "hover:bg-accent",
+                  isTodayDate && "ring-2 ring-[#14443F] ring-offset-1",
                 )}
               >
-                <span className="mb-1 text-xs">{format(day, "d")}</span>
-                
-                {/* Pain Indicator Dot */}
-                {isCurrentMonth && (
-                   <div className={cn("w-2 h-2 rounded-full", getPainColor(painLevel))}></div>
-                )}
+                <span>{format(day, "d")}</span>
               </button>
-              
-              {/* Secondary Indicators (Period, Therapy) */}
-              {isCurrentMonth && (
-                <div className="flex gap-1 mt-1 justify-center absolute -bottom-1 w-full">
-                    {hasPeriod && <div className="w-1 h-1 rounded-full bg-red-400"></div>}
-                    {takenTherapy && <div className="w-1 h-1 rounded-full bg-blue-400"></div>} 
-                </div>
-              )}
             </div>
           );
         })}
       </div>
-      
-      {/* Legend */}
-      <div className="mt-8 flex flex-wrap items-center justify-center gap-4 text-[10px] text-gray-500 border-t border-gray-100 pt-4">
+
+      {/* Legend: 1–4 only */}
+      <div className="mt-6 flex flex-wrap items-center justify-center gap-4 text-[10px] text-gray-500 border-t border-gray-100 pt-4">
         <div className="flex items-center gap-1.5">
-          <div className="w-3 h-3 rounded-full bg-[#E8E8E8]"></div>
-          <span>Nessuno</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <div className="w-3 h-3 rounded-full bg-[#B5E4C4]"></div>
+          <div className="w-4 h-4 rounded-md bg-[#B5E4C4]" />
           <span>Basso</span>
         </div>
         <div className="flex items-center gap-1.5">
-          <div className="w-3 h-3 rounded-full bg-[#FDE8B0]"></div>
+          <div className="w-4 h-4 rounded-md bg-[#FDE8B0]" />
           <span>Medio</span>
         </div>
         <div className="flex items-center gap-1.5">
-          <div className="w-3 h-3 rounded-full bg-[#F4A0A0]"></div>
+          <div className="w-4 h-4 rounded-md bg-[#F4A0A0]" />
           <span>Alto</span>
         </div>
         <div className="flex items-center gap-1.5">
-          <div className="w-3 h-3 rounded-full bg-[#E05A5A]"></div>
+          <div className="w-4 h-4 rounded-md bg-[#E05A5A]" />
           <span>Intenso</span>
         </div>
       </div>

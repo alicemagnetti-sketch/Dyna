@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { DayEntriesProvider } from "@/context/DayEntriesContext";
 
 export const metadata: Metadata = {
   title: "Dyna",
@@ -13,7 +14,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="it">
-      <body>{children}</body>
+      <body>
+        <DayEntriesProvider>{children}</DayEntriesProvider>
+      </body>
     </html>
   );
 }
