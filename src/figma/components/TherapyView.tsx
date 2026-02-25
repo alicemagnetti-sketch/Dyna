@@ -51,42 +51,12 @@ export function TherapyView() {
   ];
 
   return (
-    <div className="p-4 space-y-6 pb-24">
+    <div className="p-4 pt-8 space-y-6 pb-24">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-[#14443F]">Il tuo Piano</h2>
         <button className="p-2 bg-[#EBF5F0] rounded-full text-[#14443F]">
           <Plus size={24} />
         </button>
-      </div>
-
-      <div className="bg-[#14443F] rounded-3xl p-6 text-white shadow-lg relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16 blur-xl" />
-        
-        <div className="flex justify-between items-center mb-6 relative z-10">
-          <div>
-            <h3 className="font-bold text-lg mb-1">Aderenza settimanale</h3>
-            <p className="text-white/70 text-sm">Hai seguito il 90% della terapia.</p>
-          </div>
-          <div className="w-12 h-12 rounded-full border-4 border-white/20 flex items-center justify-center font-bold text-sm">
-            90%
-          </div>
-        </div>
-        
-        <div className="flex justify-between items-end h-24 gap-2 relative z-10">
-          {[80, 100, 100, 60, 100, 100, 90].map((h, i) => (
-            <div key={i} className="flex flex-col items-center gap-2 w-full">
-              <div className="w-full bg-white/10 rounded-t-sm relative flex items-end h-full hover:bg-white/20 transition-colors">
-                <div 
-                  className="w-full bg-[#B5E4C4] rounded-t-sm transition-all duration-500" 
-                  style={{ height: `${h}%`, opacity: h < 100 ? 0.7 : 1 }}
-                />
-              </div>
-              <span className="text-[10px] uppercase font-bold text-white/60">
-                {['L', 'M', 'M', 'G', 'V', 'S', 'D'][i]}
-              </span>
-            </div>
-          ))}
-        </div>
       </div>
 
       <div className="space-y-4">

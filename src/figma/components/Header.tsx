@@ -69,7 +69,11 @@ export function Header({ userName = "Alice" }: HeaderProps) {
     <motion.header
       initial={{ opacity: 0, y: -20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="flex items-center justify-between px-6 pt-12 pb-6 bg-[#EBF5F0]"
+      className="flex items-center justify-between px-6 pt-12 pb-10 bg-transparent"
+      style={{
+        background: "linear-gradient(to bottom, #EBF5F0 0%, #EBF5F0 55%, #F8FBF9 100%)",
+        minHeight: "140px",
+      }}
     >
       <div>
         <h1 className="text-2xl font-bold text-[#14443F]">Ciao {userName},</h1>

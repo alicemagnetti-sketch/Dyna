@@ -98,7 +98,7 @@ export function DayOverviewModal({
                 </div>
               ) : (
                 <>
-                  {/* Appuntamenti (collapsed con espandi / dettagli / modifica / elimina) */}
+                  {/* Solo sezioni con dati: Appuntamenti */}
                   {(entry.appointments?.length ?? 0) > 0 && (
                     <section>
                       <h3 className="flex items-center gap-2 text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">
@@ -219,20 +219,20 @@ export function DayOverviewModal({
                     </section>
                   )}
 
-                  {/* Ciclo */}
-                  <section>
-                    <h3 className="flex items-center gap-2 text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">
-                      <Droplet size={16} />
-                      Ciclo
-                    </h3>
-                    <p className="text-[#14443F] font-medium">
-                      {entry.periodFlow != null
-                        ? PERIOD_FLOW_LABELS[entry.periodFlow] ?? entry.periodFlow
-                        : "No"}
-                    </p>
-                  </section>
+                  {/* Ciclo: solo se valorizzato */}
+                  {entry.periodFlow != null && (
+                    <section>
+                      <h3 className="flex items-center gap-2 text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">
+                        <Droplet size={16} />
+                        Ciclo
+                      </h3>
+                      <p className="text-[#14443F] font-medium">
+                        {PERIOD_FLOW_LABELS[entry.periodFlow] ?? entry.periodFlow}
+                      </p>
+                    </section>
+                  )}
 
-                  {/* Terapie assunte (non mostrate in calendario, ma sì in overview) */}
+                  {/* Terapie assunte */}
                   {(entry.therapies?.some((t) => t.taken) ?? false) && (
                     <section>
                       <h3 className="flex items-center gap-2 text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">

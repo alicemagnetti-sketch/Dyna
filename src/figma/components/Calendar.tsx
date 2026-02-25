@@ -86,6 +86,12 @@ export function Calendar({
         {days.map((day) => {
           const entry = getEntry(day);
           const painLevel = entry.painLevel;
+          const hasAppointment = (entry.appointments?.length ?? 0) > 0;
+          const hasNoteOrOther =
+            (entry.notes?.trim() ?? "") !== "" ||
+            entry.painLevel !== null ||
+            entry.periodFlow !== null ||
+            (entry.therapies?.some((t) => t.taken) ?? false);
           const isSelected = isSameDay(day, selectedDate);
           const isCurrentMonth = isSameMonth(day, currentMonth);
           const isTodayDate = isToday(day);
@@ -95,7 +101,7 @@ export function Calendar({
               <button
                 onClick={() => onSelectDate(day)}
                 className={cn(
-                  "w-full min-h-12 flex flex-col items-center justify-center rounded-2xl text-sm font-medium transition-all",
+                  "w-full min-h-12 flex flex-col items-center justify-center gap-1 rounded-2xl text-sm font-medium transition-all",
                   isCurrentMonth ? getPainCellColor(painLevel) : "bg-gray-50",
                   !isCurrentMonth && "text-gray-300 opacity-60",
                   isCurrentMonth && "text-gray-800",
@@ -104,6 +110,16 @@ export function Calendar({
                 )}
               >
                 <span>{format(day, "d")}</span>
+                {(hasAppointment || hasNoteOrOther) && (
+                  <span className="flex items-center justify-center gap-0.5">
+                    {hasAppointment && (
+                      <span className="w-1.5 h-1.5 rounded-full bg-pink-400 shrink-0" aria-hidden />
+                    )}
+                    {hasNoteOrOther && (
+                      <span className="w-1.5 h-1.5 rounded-full bg-blue-400 shrink-0" aria-hidden />
+                    )}
+                  </span>
+                )}
               </button>
             </div>
           );

@@ -35,16 +35,16 @@ export default function AppShell() {
 
   return (
     <div className="min-h-dvh bg-[#F8FBF9] pb-24">
-      <Header userName="Alice" />
+      {activeTab === "calendar" && <Header userName="Alice" />}
 
       {activeTab === "calendar" && (
-        <>
+        <div className="-mt-4">
           <Calendar
             selectedDate={selectedDate}
             onSelectDate={handleSelectDate}
           />
           <CalendarUpcoming onEditAppointment={handleEditAppointmentFromCard} />
-        </>
+        </div>
       )}
 
       {activeTab === "therapy" && <TherapyView />}

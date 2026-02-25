@@ -182,7 +182,7 @@ export function DiaryView() {
   };
 
   return (
-    <div className="p-4 pb-24 space-y-6 relative">
+    <div className="p-4 pt-8 pb-24 space-y-6 relative">
       <AnimatePresence>{isAdding && <AddEntryModal />}</AnimatePresence>
 
       <div className="flex items-center justify-between">

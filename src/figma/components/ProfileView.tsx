@@ -134,7 +134,7 @@ export function ProfileView() {
   }
 
   return (
-    <div className="p-4 pb-24 space-y-6">
+    <div className="p-4 pt-8 pb-24 space-y-6">
       <div className="flex items-center gap-4 mb-8">
         <div className="w-20 h-20 rounded-full bg-[#EBF5F0] flex items-center justify-center text-[#14443F] shadow-inner text-2xl font-bold">
           AB
