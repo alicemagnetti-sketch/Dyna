@@ -1,0 +1,34 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Dev: Avvia Next.js",
+      "type": "shell",
+      "command": "npm run dev",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "focus": true
+      },
+      "isBackground": true,
+      "runOptions": { "instanceLimit": 1 }
+    },
+    {
+      "label": "Preview: Apri frontend qui",
+      "type": "shell",
+      "command": "echo",
+      "args": ["${input:openDynaPreview}"],
+      "problemMatcher": [],
+      "presentation": { "reveal": "never", "echo": false, "panel": "shared" }
+    }
+  ],
+  "inputs": [
+    {
+      "id": "openDynaPreview",
+      "type": "command",
+      "command": "simpleBrowser.show",
+      "args": ["http://127.0.0.1:3000"]
+    }
+  ]
+}

@@ -1,26 +1,82 @@
+@import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&family=Work+Sans:wght@400;500&display=swap');
 @import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --font-size: 16px;
+  --background: #F8FBF9;
+  --foreground: #14443F;
+  --card: #ffffff;
+  --card-foreground: #14443F;
+  --popover: #ffffff;
+  --popover-foreground: #14443F;
+  --primary: #14443F;
+  --primary-foreground: #ffffff;
+  --secondary: #EBF5F0;
+  --secondary-foreground: #14443F;
+  --muted: #EBF5F0;
+  --muted-foreground: #5C8D89;
+  --accent: #EBF5F0;
+  --accent-foreground: #14443F;
+  --destructive: #d4183d;
+  --destructive-foreground: #ffffff;
+  --border: rgba(0, 0, 0, 0.07);
+  --input: transparent;
+  --input-background: #EBF5F0;
+  --switch-background: #9DC4BC;
+  --ring: #14443F;
+  --radius: 1rem;
+  --font-weight-medium: 500;
+  --font-weight-normal: 400;
+  --chart-1: #B5E4C4;
+  --chart-2: #FDE8B0;
+  --chart-3: #F4A0A0;
+  --chart-4: #E05A5A;
+  --chart-5: #14443F;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
   }
-}
-
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Work Sans', sans-serif;
+  }
+  h1, h2, h3, h4 {
+    font-family: 'Sora', sans-serif;
+    font-weight: 600;
+    line-height: 1.3;
+  }
+  html {
+    font-size: var(--font-size);
+  }
 }
