@@ -1,4 +1,4 @@
-import type { DailyLog, DailyLogDraft, DynaData, Profile } from "./types";
+import type { DailyLog, DailyLogDraft, DynaData, Profile, SwabScores } from "./types";
 
 const STORAGE_KEY = "dyna_data_v1";
 
@@ -13,11 +13,17 @@ export function getEmptyData(): DynaData {
   return {
     profile: {
       name: null,
+      firstName: null,
+      lastName: null,
+      dateOfBirth: null,
       age: null,
       diagnosisDate: null,
-      swabTest: { result: "non_eseguito", note: null },
+      specialists: [],
+      swabTest: { result: "non_eseguito", note: null, scores: null },
+      swabVisits: [],
       currentTherapies: [],
       features: { voidingDiaryEnabled: false },
+      supportRemoved: false,
     },
     dailyLogs: [],
     medications: [],
@@ -47,24 +53,61 @@ export function saveData(data: DynaData) {
 // ---- Profile helpers ----
 
 export function getProfile(): Profile {
-  return loadData().profile;
+  const data = loadData();
+  const p = data.profile;
+  return {
+    name: p.name ?? null,
+    firstName: p.firstName ?? null,
+    lastName: p.lastName ?? null,
+    dateOfBirth: p.dateOfBirth ?? null,
+    age: p.age ?? null,
+    diagnosisDate: p.diagnosisDate ?? null,
+    specialists: Array.isArray(p.specialists) ? p.specialists : [],
+    swabTest: {
+      result: p.swabTest?.result ?? "non_eseguito",
+      note: p.swabTest?.note ?? null,
+      scores: p.swabTest?.scores ?? null,
+    },
+    swabVisits: Array.isArray(p.swabVisits) ? p.swabVisits : [],
+    currentTherapies: p.currentTherapies ?? [],
+    features: p.features ?? { voidingDiaryEnabled: false },
+    supportRemoved: p.supportRemoved ?? false,
+  };
 }
 
 export function updateProfile(partial: Partial<Profile>): DynaData {
   const data = loadData();
+  const prev = data.profile;
 
   const updated: DynaData = {
     ...data,
     profile: {
-      ...data.profile,
+      ...prev,
       ...partial,
       swabTest: partial.swabTest
-        ? { ...data.profile.swabTest, ...partial.swabTest }
-        : data.profile.swabTest,
+        ? (() => {
+            const base: Partial<SwabScores> = prev.swabTest.scores ?? {};
+            const patch: Partial<SwabScores> = partial.swabTest.scores ?? {};
+            const scores: SwabScores = {
+              clitoride: patch.clitoride ?? base.clitoride ?? null,
+              orefizioUretrale: patch.orefizioUretrale ?? base.orefizioUretrale ?? null,
+              labbroDestro: patch.labbroDestro ?? base.labbroDestro ?? null,
+              labbroSinistro: patch.labbroSinistro ?? base.labbroSinistro ?? null,
+              forchetta: patch.forchetta ?? base.forchetta ?? null,
+            };
+            return {
+              ...prev.swabTest,
+              ...partial.swabTest,
+              scores: partial.swabTest.scores !== undefined ? scores : prev.swabTest.scores,
+            };
+          })()
+        : prev.swabTest,
       features: partial.features
-        ? { ...data.profile.features, ...partial.features }
-        : data.profile.features,
-      currentTherapies: partial.currentTherapies ?? data.profile.currentTherapies,
+        ? { ...prev.features, ...partial.features }
+        : prev.features,
+      currentTherapies: partial.currentTherapies ?? prev.currentTherapies,
+      specialists: partial.specialists ?? prev.specialists,
+      swabVisits: partial.swabVisits ?? prev.swabVisits,
     },
   };
 
@@ -113,5 +156,24 @@ export function listDailyLogsInMonth(year: number, month: number): DailyLog[] {
   const monthStr = String(month).padStart(2, "0");
   const prefix = `${year}-${monthStr}-`;
   return data.dailyLogs.filter((log) => log.date.startsWith(prefix));
+}
+
+/** Chiavi localStorage usate dall'app (per reset completo) */
+const ALL_APP_KEYS = [
+  "dyna_data_v1",
+  "dyna-day-entries",
+  "dyna_diaries_v1",
+  "dyna_reminders_v1",
+  "dyna_notifications_shown_v1",
+  "dyna_notification_prefs_v1",
+  "dyna_notification_log_v1",
+  "dyna-therapy-plan",
+  "dyna-therapy-history",
+];
+
+/** Cancella tutto lo storage locale. Da usare dopo conferma Reset app. */
+export function clearAllAppStorage(): void {
+  if (typeof window === "undefined") return;
+  ALL_APP_KEYS.forEach((key) => window.localStorage.removeItem(key));
 }
 

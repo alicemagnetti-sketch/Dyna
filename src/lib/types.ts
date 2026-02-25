@@ -8,9 +8,38 @@ export type MedicationType = "topical" | "oral" | "suppository" | "other";
 
 export type SwabTestResult = "positivo" | "negativo" | "non_eseguito";
 
+/** Punteggi 1-10 per le 5 zone (L3 Swab Test) */
+export type SwabScores = {
+  clitoride: number | null;
+  orefizioUretrale: number | null;
+  labbroDestro: number | null;
+  labbroSinistro: number | null;
+  forchetta: number | null;
+};
+
 export type SwabTestInfo = {
   result: SwabTestResult;
   note: string | null;
+  /** @deprecated usare swabVisits per visite con risultati */
+  scores?: SwabScores | null;
+};
+
+/** Visita con swab test: data visita + risultati 1-10 per le 5 zone */
+export type SwabVisit = {
+  id: string;
+  date: ISODate;
+  swabScores: SwabScores;
+};
+
+export type SpecialistType = "ginecologo" | "nutrizionista" | "fisioterapista" | "altro";
+
+export type Specialist = {
+  id: string;
+  type: SpecialistType;
+  typeOther?: string | null;
+  startDate: ISODate;
+  endDate: ISODate | null;
+  stillActive: boolean;
 };
 
 export type FeatureToggles = {
@@ -26,12 +55,21 @@ export type MedicationLight = {
 };
 
 export type Profile = {
+  /** Legacy: usato se firstName/lastName assenti */
   name: string | null;
+  firstName: string | null;
+  lastName: string | null;
+  dateOfBirth: ISODate | null;
   age: number | null;
   diagnosisDate: ISODate | null;
+  specialists: Specialist[];
   swabTest: SwabTestInfo;
+  /** Visite con swab test (data visita + risultati per zona) */
+  swabVisits: SwabVisit[];
   currentTherapies: MedicationLight[];
   features: FeatureToggles;
+  /** Se true, nasconde la voce Supporto nel profilo */
+  supportRemoved?: boolean;
 };
 
 export type DailyLog = {

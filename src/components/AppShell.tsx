@@ -14,6 +14,7 @@ import { EditTherapyModal } from "@/figma/components/EditTherapyModal";
 import { DiaryView } from "@/figma/components/DiaryView";
 import { ProfileView } from "@/figma/components/ProfileView";
 import { useDayEntries } from "@/context/DayEntriesContext";
+import { useProfile, getDisplayName } from "@/context/ProfileContext";
 import type { Appointment } from "@/lib/day-entries";
 
 export default function AppShell() {
@@ -25,6 +26,7 @@ export default function AppShell() {
   const [editAppointment, setEditAppointment] = useState<{ dateKey: string; appointment: Appointment } | null>(null);
   const [addTherapyOpen, setAddTherapyOpen] = useState(false);
   const { getEntry } = useDayEntries();
+  const { profile } = useProfile();
   useNotificationChecker();
 
   const handleFabAction = (action: FabAction) => {
@@ -50,7 +52,7 @@ export default function AppShell() {
 
   return (
     <div className="min-h-dvh bg-[#F8FBF9] pb-24">
-      {activeTab === "calendar" && <Header userName="Alice" />}
+      {activeTab === "calendar" && <Header userName={getDisplayName(profile)} />}
 
       {activeTab === "calendar" && (
         <div className="-mt-4">

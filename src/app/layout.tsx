@@ -3,6 +3,7 @@ import "./globals.css";
 import { DayEntriesProvider } from "@/context/DayEntriesContext";
 import { TherapyPlanProvider } from "@/context/TherapyPlanContext";
 import { DiariesProvider } from "@/context/DiariesContext";
+import { ProfileProvider } from "@/context/ProfileContext";
 
 /** Versione app: incrementa a ogni deploy per verificare che Netlify serva la build nuova */
 const APP_VERSION = "3.0";
@@ -22,7 +23,9 @@ export default function RootLayout({
       <body>
         <DayEntriesProvider>
           <TherapyPlanProvider>
-          <DiariesProvider>{children}</DiariesProvider>
+          <DiariesProvider>
+            <ProfileProvider>{children}</ProfileProvider>
+          </DiariesProvider>
         </TherapyPlanProvider>
         </DayEntriesProvider>
         {/* Indicatore versione per verificare deploy: rimuovere quando confermato */}
