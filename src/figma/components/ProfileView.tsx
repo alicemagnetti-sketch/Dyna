@@ -9,7 +9,7 @@ import {
   setNotificationPrefs,
   setMedicineReminder,
 } from "@/lib/notifications";
-import { THERAPY_PLAN } from "@/lib/day-entries";
+import { loadTherapyPlan } from "@/lib/therapy";
 
 const APPOINTMENT_MINUTES_OPTIONS = [
   { label: "15 min prima", value: 15 },
@@ -32,10 +32,11 @@ export function ProfileView() {
   const handleMedicineToggle = (enabled: boolean) => {
     setNotificationPrefs({ medicineEnabled: enabled });
     setPrefs((p) => ({ ...p, medicineEnabled: enabled }));
+    const plan = loadTherapyPlan();
     if (enabled) {
-      THERAPY_PLAN.forEach((t) => setMedicineReminder(t.id, t.time, true));
+      plan.filter((t) => !t.paused).forEach((t) => setMedicineReminder(t.id, t.time, true));
     } else {
-      THERAPY_PLAN.forEach((t) => setMedicineReminder(t.id, "", false));
+      plan.forEach((t) => setMedicineReminder(t.id, "", false));
     }
   };
 

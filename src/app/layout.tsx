@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { DayEntriesProvider } from "@/context/DayEntriesContext";
+import { TherapyPlanProvider } from "@/context/TherapyPlanContext";
 
 export const metadata: Metadata = {
   title: "Dyna",
@@ -15,7 +16,9 @@ export default function RootLayout({
   return (
     <html lang="it">
       <body>
-        <DayEntriesProvider>{children}</DayEntriesProvider>
+        <DayEntriesProvider>
+          <TherapyPlanProvider>{children}</TherapyPlanProvider>
+        </DayEntriesProvider>
       </body>
     </html>
   );

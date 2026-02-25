@@ -4,11 +4,7 @@ import { useEffect, useRef } from "react";
 import { useDayEntries } from "@/context/DayEntriesContext";
 import { getUpcomingAppointments, getAppointmentTypeLabel } from "@/lib/day-entries";
 import { checkMedicineReminders, checkAppointmentReminders } from "@/lib/notifications";
-import { THERAPY_PLAN } from "@/lib/day-entries";
-
-const THERAPY_NAMES: Record<number, string> = Object.fromEntries(
-  THERAPY_PLAN.map((t) => [t.id, t.pattern === "alternating" ? "Deha / Ubigel" : t.name])
-);
+import { loadTherapyPlan } from "@/lib/therapy";
 
 export function useNotificationChecker() {
   const { entries } = useDayEntries();
@@ -19,7 +15,11 @@ export function useNotificationChecker() {
 
     function check() {
       if (!document.hasFocus?.() && document.visibilityState !== "visible") return;
-      checkMedicineReminders(THERAPY_NAMES);
+      const plan = loadTherapyPlan();
+      const therapyNames: Record<number, string> = Object.fromEntries(
+        plan.filter((t) => !t.paused).map((t) => [t.id, t.name])
+      );
+      checkMedicineReminders(therapyNames);
       const upcoming = getUpcomingAppointments(entries, 7);
       const list = upcoming.map(({ dateKey, appointment }) => ({
         id: appointment.id,

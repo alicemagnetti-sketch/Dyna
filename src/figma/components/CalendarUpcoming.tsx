@@ -1,16 +1,22 @@
 "use client";
 
 import { useMemo } from "react";
-import { CalendarClock, Pill, Pencil } from "lucide-react";
+import { CalendarClock, Pencil } from "lucide-react";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
 import { useDayEntries } from "@/context/DayEntriesContext";
+import { useTherapyPlan } from "@/context/TherapyPlanContext";
 import {
   getNextAppointment,
-  getTherapiesForDay,
   getAppointmentTypeLabel,
   parseDateKey,
 } from "@/lib/day-entries";
+import {
+  getTherapyDoseDisplay,
+  getTherapyTimeDisplay,
+  isOralForm,
+  shouldShowTherapyToday,
+} from "@/lib/therapy";
 import type { Appointment } from "@/lib/day-entries";
 
 function timeToMinutes(time: string): number {
@@ -25,11 +31,15 @@ interface CalendarUpcomingProps {
 
 export function CalendarUpcoming({ onEditAppointment }: CalendarUpcomingProps) {
   const { entries } = useDayEntries();
+  const { plan } = useTherapyPlan();
   const today = new Date();
   const next = getNextAppointment(entries);
   const therapiesToday = useMemo(
-    () => [...getTherapiesForDay(today)].sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time)),
-    [today]
+    () =>
+      [...plan]
+        .filter((t) => !t.paused && shouldShowTherapyToday(t, plan, today))
+        .sort((a, b) => timeToMinutes(a.time || "00:00") - timeToMinutes(b.time || "00:00")),
+    [plan, today]
   );
 
   return (
@@ -76,18 +86,28 @@ export function CalendarUpcoming({ onEditAppointment }: CalendarUpcomingProps) {
         Terapie di oggi
       </p>
       <ul className="space-y-2">
-        {therapiesToday.map((t) => (
-          <li
-            key={t.id}
-            className="flex items-center gap-3 p-3 rounded-2xl bg-[var(--card)] text-[#14443F]"
-          >
-            <Pill size={18} className="shrink-0 text-[#14443F]/70" />
-            <div>
-              <p className="font-medium">{t.name}</p>
-              <p className="text-sm opacity-80">{t.dose} · {t.time}</p>
-            </div>
-          </li>
-        ))}
+        {therapiesToday.length === 0 ? (
+          <p className="text-sm text-gray-400 italic py-1">Nessuna terapia in corso</p>
+        ) : (
+          therapiesToday.map((t) => {
+            const dose = isOralForm(t.form) ? getTherapyDoseDisplay(t) : "";
+            const timeLabel = getTherapyTimeDisplay(t);
+            const subtitle = [dose, timeLabel].filter(Boolean).join(" · ");
+            return (
+              <li
+                key={t.id}
+                className="flex items-center gap-3 py-3 px-0 rounded-2xl bg-[var(--card)] text-[#14443F]"
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium">{t.name}</p>
+                  {subtitle ? (
+                    <p className="text-sm opacity-80">{subtitle}</p>
+                  ) : null}
+                </div>
+              </li>
+            );
+          })
+        )}
       </ul>
     </div>
   );
