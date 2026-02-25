@@ -67,6 +67,26 @@ export function TherapyView({ openAddTherapy, onAddTherapyClose }: TherapyViewPr
     if (openAddTherapy) setAddingNew(true);
   }, [openAddTherapy]);
 
+  if (plan.length === 0) {
+    return (
+      <div className="min-h-dvh flex flex-col items-center justify-center px-6 pb-24 bg-[#F8FBF9]">
+        <div className="rounded-full bg-[#EBF5F0] p-8 mb-6" aria-hidden>
+          <Pill size={64} className="text-[#14443F]" strokeWidth={1.5} />
+        </div>
+        <h2 className="text-xl font-bold text-[#14443F] text-center mb-2">Non hai terapie attive</h2>
+        <p className="text-gray-500 text-sm text-center mb-8">Aggiungi un farmaco per tenere traccia del tuo piano.</p>
+        <button
+          type="button"
+          onClick={() => setAddingNew(true)}
+          className="inline-flex items-center gap-2 px-6 py-3 bg-[#14443F] text-white font-medium rounded-full hover:bg-[#0f332f] transition-colors"
+          aria-label="Aggiungi un farmaco"
+        >
+          Aggiungi un farmaco
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="p-4 pt-8 space-y-6 pb-24">
       <div className="flex items-center justify-between">
@@ -82,24 +102,7 @@ export function TherapyView({ openAddTherapy, onAddTherapyClose }: TherapyViewPr
       </div>
 
       <div className="space-y-4">
-        {plan.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
-            <div className="rounded-full bg-[#EBF5F0] p-6 mb-6" aria-hidden>
-              <Pill size={64} className="text-[#14443F]" strokeWidth={1.5} />
-            </div>
-            <p className="text-lg font-semibold text-[#14443F] mb-6">Non hai terapie attive</p>
-            <button
-              type="button"
-              onClick={() => setAddingNew(true)}
-              className="inline-flex items-center gap-2 px-5 py-3 bg-[#14443F] text-white font-medium rounded-full hover:bg-[#0f332f] transition-colors"
-              aria-label="Aggiungi un farmaco"
-            >
-              <Plus size={20} />
-              Aggiungi un farmaco
-            </button>
-          </div>
-        ) : (
-          <>
+        <>
             <div className="flex items-center justify-between px-2">
               <h3 className="font-bold text-[#14443F] text-lg">Farmaci Attivi</h3>
               <span className="text-xs font-bold text-[#5C8D89] bg-[#EBF5F0] px-3 py-1 rounded-full uppercase tracking-wide">
@@ -202,8 +205,7 @@ export function TherapyView({ openAddTherapy, onAddTherapyClose }: TherapyViewPr
             </div>
           );
         })}
-          </>
-        )}
+        </>
       </div>
 
       <div className="pt-4 border-t border-gray-100">
