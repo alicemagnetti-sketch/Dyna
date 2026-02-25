@@ -3,10 +3,34 @@
  * Allineato alla pagina Terapia.
  */
 
+export type AppointmentType = "ginecologo" | "nutrizionista" | "fisioterapista" | "altro";
+
 export interface Appointment {
   id: string;
-  title: string;
+  /** Tipo di appuntamento; se "altro" usare typeOther per il testo libero */
+  type: AppointmentType;
+  typeOther?: string;
+  /** Giorno dell'appuntamento (YYYY-MM-DD) */
+  date: string;
   time: string;
+  /** Luogo */
+  place: string;
+}
+
+const APPOINTMENT_TYPE_LABELS: Record<AppointmentType, string> = {
+  ginecologo: "Ginecologo",
+  nutrizionista: "Nutrizionista",
+  fisioterapista: "Fisioterapista",
+  altro: "Altro",
+};
+
+/** Testo da mostrare per il tipo (per "altro" usa typeOther; supporta legacy con title) */
+export function getAppointmentTypeLabel(apt: Appointment | { id: string; title?: string; time?: string }): string {
+  const a = apt as Record<string, unknown>;
+  if (a.title && !a.type) return String(a.title);
+  return (apt as Appointment).type === "altro" && (apt as Appointment).typeOther?.trim()
+    ? (apt as Appointment).typeOther!.trim()
+    : APPOINTMENT_TYPE_LABELS[(apt as Appointment).type];
 }
 
 export interface TherapyEntry {
@@ -92,4 +116,36 @@ export function mergeTherapiesForDay(date: Date, saved: TherapyEntry[]): Therapy
     ...t,
     taken: byId.get(t.id)?.taken ?? false,
   }));
+}
+
+/** Da chiave YYYY-MM-DD a Date (inizio giornata) */
+export function parseDateKey(key: string): Date {
+  const [y, m, d] = key.split("-").map(Number);
+  return new Date(y, m - 1, d);
+}
+
+/** Prossimo appuntamento (data+ora >= adesso). Restituisce dateKey e appointment. */
+export function getNextAppointment(
+  entries: Record<string, DayEntry>
+): { dateKey: string; appointment: Appointment } | null {
+  const now = new Date();
+  const list: { dateKey: string; appointment: Appointment }[] = [];
+  for (const [k, entry] of Object.entries(entries)) {
+    for (const apt of entry.appointments ?? []) {
+      const key = (apt as Appointment).date || k;
+      list.push({ dateKey: key, appointment: apt as Appointment });
+    }
+  }
+  list.sort((a, b) => {
+    const d = a.dateKey.localeCompare(b.dateKey);
+    if (d !== 0) return d;
+    return ((a.appointment as Appointment).time || "").localeCompare((b.appointment as Appointment).time || "");
+  });
+  for (const item of list) {
+    const d = parseDateKey(item.dateKey);
+    const [h = 0, m = 0] = ((item.appointment as Appointment).time || "00:00").split(":").map(Number);
+    const aptDate = new Date(d.getFullYear(), d.getMonth(), d.getDate(), h, m);
+    if (aptDate >= now) return item;
+  }
+  return null;
 }

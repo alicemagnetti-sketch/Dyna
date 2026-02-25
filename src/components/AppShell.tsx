@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Plus } from "lucide-react";
 import { Header } from "@/figma/components/Header";
 import { Calendar } from "@/figma/components/Calendar";
+import { CalendarUpcoming } from "@/figma/components/CalendarUpcoming";
 import { SymptomTrackerModal } from "@/figma/components/SymptomTracker";
 import { DayOverviewModal } from "@/figma/components/DayOverviewModal";
 import { BottomNav } from "@/figma/components/BottomNav";
@@ -34,13 +34,7 @@ export default function AppShell() {
             selectedDate={selectedDate}
             onSelectDate={handleSelectDate}
           />
-          <button
-            onClick={() => setSymptomModalOpen(true)}
-            className="fixed bottom-24 right-6 w-14 h-14 rounded-full bg-[#14443F] text-white shadow-lg flex items-center justify-center z-30 hover:bg-[#0f3530] transition-colors"
-            aria-label="Aggiungi giornata"
-          >
-            <Plus size={24} strokeWidth={2.5} />
-          </button>
+          <CalendarUpcoming />
         </>
       )}
 
@@ -48,7 +42,11 @@ export default function AppShell() {
       {activeTab === "diary" && <DiaryView />}
       {activeTab === "profile" && <ProfileView />}
 
-      <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
+      <BottomNav
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        onFabClick={() => setSymptomModalOpen(true)}
+      />
 
       <DayOverviewModal
         isOpen={dayOverviewModalOpen}

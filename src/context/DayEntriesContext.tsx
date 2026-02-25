@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useCallback, useContext, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
 import {
   type DayEntry,
   dateKey,
@@ -8,7 +8,21 @@ import {
   mergeTherapiesForDay,
 } from "@/lib/day-entries";
 
+const STORAGE_KEY = "dyna-day-entries";
+
 type DayEntriesState = Record<string, DayEntry>;
+
+function loadFromStorage(): DayEntriesState {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as DayEntriesState;
+    return typeof parsed === "object" && parsed !== null ? parsed : {};
+  } catch {
+    return {};
+  }
+}
 
 interface DayEntriesContextValue {
   entries: DayEntriesState;
@@ -20,7 +34,15 @@ interface DayEntriesContextValue {
 const DayEntriesContext = createContext<DayEntriesContextValue | null>(null);
 
 export function DayEntriesProvider({ children }: { children: React.ReactNode }) {
-  const [entries, setEntries] = useState<DayEntriesState>({});
+  const [entries, setEntries] = useState<DayEntriesState>(loadFromStorage);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+    } catch {
+      // quota exceeded or private mode
+    }
+  }, [entries]);
 
   const getEntry = useCallback((date: Date): DayEntry => {
     const key = dateKey(date);

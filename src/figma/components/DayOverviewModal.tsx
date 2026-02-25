@@ -7,8 +7,10 @@ import { it } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import {
   type DayEntry,
+  type Appointment,
   PAIN_LABELS,
   PERIOD_FLOW_LABELS,
+  getAppointmentTypeLabel,
 } from "@/lib/day-entries";
 
 const PAIN_STYLES: Record<number, string> = {
@@ -99,13 +101,16 @@ export function DayOverviewModal({
                         Appuntamenti
                       </h3>
                       <ul className="space-y-2">
-                        {entry.appointments!.map((apt) => (
+                        {(entry.appointments as Appointment[]).map((apt) => (
                           <li
                             key={apt.id}
-                            className="flex items-center gap-2 p-3 rounded-2xl bg-gray-50 text-[#14443F]"
+                            className="p-3 rounded-2xl bg-gray-50 text-[#14443F]"
                           >
-                            <span className="font-medium">{apt.time}</span>
-                            <span>{apt.title}</span>
+                            <span className="font-medium block">{getAppointmentTypeLabel(apt)}</span>
+                            <span className="text-sm text-gray-500">
+                              {(apt as Appointment).time}
+                              {"place" in apt && apt.place ? ` · ${apt.place}` : ""}
+                            </span>
                           </li>
                         ))}
                       </ul>

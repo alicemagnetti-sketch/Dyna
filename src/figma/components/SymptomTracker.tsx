@@ -2,14 +2,16 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { X, Save, Check, Plus, CalendarClock, Droplet } from "lucide-react";
+import { X, Save, Plus, CalendarClock, Droplet } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useDayEntries } from "@/context/DayEntriesContext";
 import {
-  getTherapiesForDay,
-  mergeTherapiesForDay,
   PAIN_LABELS,
+  getAppointmentTypeLabel,
+  dateKey,
+  parseDateKey,
   type Appointment,
+  type AppointmentType,
 } from "@/lib/day-entries";
 
 interface SymptomTrackerModalProps {
@@ -32,6 +34,13 @@ const PERIOD_OPTIONS: { value: "light" | "medium" | "heavy"; label: string; drop
   { value: "heavy", label: "Intenso", drops: 3 },
 ];
 
+const APPOINTMENT_TYPES: { value: AppointmentType; label: string }[] = [
+  { value: "ginecologo", label: "Ginecologo" },
+  { value: "nutrizionista", label: "Nutrizionista" },
+  { value: "fisioterapista", label: "Fisioterapista" },
+  { value: "altro", label: "Altro" },
+];
+
 function Droplets({ count }: { count: number }) {
   return (
     <span className="flex items-center gap-0.5 text-red-500">
@@ -42,31 +51,56 @@ function Droplets({ count }: { count: number }) {
   );
 }
 
+/** Normalizza appuntamenti legacy (title, time) in formato nuovo (type, date, place) */
+function normalizeAppointments(appointments: unknown[], fallbackDate: string): Appointment[] {
+  return (appointments ?? []).map((a: unknown) => {
+    const any = a as Record<string, unknown>;
+    if (any.type && any.date != null && any.place != null) {
+      return a as Appointment;
+    }
+    return {
+      id: String(any.id ?? crypto.randomUUID()),
+      type: "altro",
+      typeOther: String(any.title ?? ""),
+      date: String(any.date ?? fallbackDate),
+      time: String(any.time ?? "14:00"),
+      place: "",
+    } as Appointment;
+  });
+}
+
 export function SymptomTrackerModal({ isOpen, onClose, date }: SymptomTrackerModalProps) {
   const { getEntry, setEntry } = useDayEntries();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [painLevel, setPainLevel] = useState<number | null>(null);
   const [notes, setNotes] = useState("");
   const [periodFlow, setPeriodFlow] = useState<"light" | "medium" | "heavy" | null>(null);
-  const [therapies, setTherapies] = useState(getTherapiesForDay(date));
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [newApt, setNewApt] = useState<{
+    type: AppointmentType;
+    typeOther: string;
+    date: string;
+    time: string;
+    place: string;
+  }>(() => ({
+    type: "ginecologo",
+    typeOther: "",
+    date: dateKey(date),
+    time: "14:00",
+    place: "",
+  }));
 
   useEffect(() => {
     if (isOpen) {
       const entry = getEntry(date);
-      setAppointments(entry.appointments ?? []);
+      const key = dateKey(date);
+      setAppointments(normalizeAppointments(entry.appointments ?? [], key));
       setPainLevel(entry.painLevel);
       setNotes(entry.notes ?? "");
       setPeriodFlow(entry.periodFlow ?? null);
-      setTherapies(mergeTherapiesForDay(date, entry.therapies ?? []));
+      setNewApt((prev) => ({ ...prev, date: key }));
     }
   }, [date, isOpen]);
-
-  const addAppointment = () => {
-    setAppointments((prev) => [
-      ...prev,
-      { id: crypto.randomUUID(), title: "Nuovo appuntamento", time: "14:00" },
-    ]);
-  };
 
   const updateAppointment = (id: string, field: keyof Appointment, value: string) => {
     setAppointments((prev) =>
@@ -78,18 +112,49 @@ export function SymptomTrackerModal({ isOpen, onClose, date }: SymptomTrackerMod
     setAppointments((prev) => prev.filter((a) => a.id !== id));
   };
 
-  const toggleTherapy = (id: number) => {
-    setTherapies((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, taken: !t.taken } : t))
-    );
+  const openAddForm = () => {
+    setNewApt({
+      type: "ginecologo",
+      typeOther: "",
+      date: dateKey(date),
+      time: "14:00",
+      place: "",
+    });
+    setShowAddForm(true);
+  };
+
+  const saveNewAppointment = () => {
+    const apt: Appointment = {
+      id: crypto.randomUUID(),
+      type: newApt.type,
+      typeOther: newApt.type === "altro" ? newApt.typeOther : undefined,
+      date: newApt.date,
+      time: newApt.time,
+      place: newApt.place,
+    };
+    const targetKey = newApt.date;
+    const targetDate = parseDateKey(targetKey);
+    const isSameDay = targetKey === dateKey(date);
+
+    if (isSameDay) {
+      setAppointments((prev) => [...prev, apt]);
+    } else {
+      const targetEntry = getEntry(targetDate);
+      const existing = normalizeAppointments(targetEntry.appointments ?? [], targetKey) as Appointment[];
+      setEntry(targetDate, {
+        ...targetEntry,
+        appointments: [...existing, apt],
+      });
+    }
+    setShowAddForm(false);
   };
 
   const handleSave = () => {
     setEntry(date, {
+      ...getEntry(date),
       painLevel,
       periodFlow,
       appointments,
-      therapies,
       notes,
     });
     onClose();
@@ -126,7 +191,7 @@ export function SymptomTrackerModal({ isOpen, onClose, date }: SymptomTrackerMod
             </div>
 
             <div className="flex-1 overflow-y-auto p-6 space-y-8 pb-28">
-              {/* 1. Appuntamenti con terapisti */}
+              {/* 1. Appuntamenti */}
               <section>
                 <h3 className="flex items-center gap-2 text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">
                   <CalendarClock size={18} />
@@ -136,42 +201,114 @@ export function SymptomTrackerModal({ isOpen, onClose, date }: SymptomTrackerMod
                   {appointments.map((apt) => (
                     <div
                       key={apt.id}
-                      className="flex items-center gap-2 p-3 rounded-2xl bg-gray-50 border border-gray-100"
+                      className="flex flex-col gap-1 p-3 rounded-2xl bg-gray-50 border border-gray-100"
                     >
-                      <input
-                        type="time"
-                        value={apt.time}
-                        onChange={(e) => updateAppointment(apt.id, "time", e.target.value)}
-                        className="w-20 text-sm font-medium text-[#14443F] bg-transparent border-none focus:ring-0 p-0"
-                      />
-                      <input
-                        type="text"
-                        value={apt.title}
-                        onChange={(e) => updateAppointment(apt.id, "title", e.target.value)}
-                        placeholder="Es. Riabilitazione pavimento pelvico"
-                        className="flex-1 text-sm text-[#14443F] bg-transparent border-none focus:ring-0 placeholder:text-gray-400"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => removeAppointment(apt.id)}
-                        className="text-gray-400 hover:text-red-500 text-sm"
-                      >
-                        Elimina
-                      </button>
+                      <div className="flex items-start justify-between gap-2">
+                        <span className="font-medium text-[#14443F]">
+                          {getAppointmentTypeLabel(apt)}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => removeAppointment(apt.id)}
+                          className="text-gray-400 hover:text-red-500 text-sm shrink-0"
+                        >
+                          Elimina
+                        </button>
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        {apt.date} · {apt.time}
+                        {apt.place ? ` · ${apt.place}` : ""}
+                      </div>
                     </div>
                   ))}
                 </div>
-                <button
-                  type="button"
-                  onClick={addAppointment}
-                  className="mt-2 w-full py-3 rounded-2xl border-2 border-dashed border-gray-200 text-gray-500 flex items-center justify-center gap-2 hover:border-[#14443F] hover:text-[#14443F] transition-colors"
-                >
-                  <Plus size={18} />
-                  Aggiungi appuntamento
-                </button>
+
+                <AnimatePresence>
+                  {showAddForm ? (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="mt-3 p-4 rounded-2xl border-2 border-[#14443F]/20 bg-[#EBF5F0]/50 space-y-3"
+                    >
+                      <label className="block text-xs font-medium text-gray-600">
+                        Tipo
+                      </label>
+                      <select
+                        value={newApt.type}
+                        onChange={(e) =>
+                          setNewApt((p) => ({ ...p, type: e.target.value as AppointmentType }))
+                        }
+                        className="w-full p-3 rounded-xl border border-gray-200 text-[#14443F] bg-white"
+                      >
+                        {APPOINTMENT_TYPES.map((opt) => (
+                          <option key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </option>
+                        ))}
+                      </select>
+                      {newApt.type === "altro" && (
+                        <input
+                          type="text"
+                          value={newApt.typeOther}
+                          onChange={(e) => setNewApt((p) => ({ ...p, typeOther: e.target.value }))}
+                          placeholder="Specifica (es. Riabilitazione pavimento pelvico)"
+                          className="w-full p-3 rounded-xl border border-gray-200 text-[#14443F] placeholder:text-gray-400"
+                        />
+                      )}
+                      <label className="block text-xs font-medium text-gray-600">Giorno</label>
+                      <input
+                        type="date"
+                        value={newApt.date}
+                        onChange={(e) => setNewApt((p) => ({ ...p, date: e.target.value }))}
+                        className="w-full p-3 rounded-xl border border-gray-200 text-[#14443F]"
+                      />
+                      <label className="block text-xs font-medium text-gray-600">Ora</label>
+                      <input
+                        type="time"
+                        value={newApt.time}
+                        onChange={(e) => setNewApt((p) => ({ ...p, time: e.target.value }))}
+                        className="w-full p-3 rounded-xl border border-gray-200 text-[#14443F]"
+                      />
+                      <label className="block text-xs font-medium text-gray-600">Luogo</label>
+                      <input
+                        type="text"
+                        value={newApt.place}
+                        onChange={(e) => setNewApt((p) => ({ ...p, place: e.target.value }))}
+                        placeholder="Indirizzo o nome dello studio"
+                        className="w-full p-3 rounded-xl border border-gray-200 text-[#14443F] placeholder:text-gray-400"
+                      />
+                      <div className="flex gap-2 pt-2">
+                        <button
+                          type="button"
+                          onClick={() => setShowAddForm(false)}
+                          className="flex-1 py-2 rounded-xl border border-gray-300 text-gray-600"
+                        >
+                          Annulla
+                        </button>
+                        <button
+                          type="button"
+                          onClick={saveNewAppointment}
+                          className="flex-1 py-2 rounded-xl bg-[#14443F] text-white font-medium"
+                        >
+                          Aggiungi
+                        </button>
+                      </div>
+                    </motion.div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={openAddForm}
+                      className="mt-2 w-full py-3 rounded-2xl border-2 border-dashed border-gray-200 text-gray-500 flex items-center justify-center gap-2 hover:border-[#14443F] hover:text-[#14443F] transition-colors"
+                    >
+                      <Plus size={18} />
+                      Aggiungi appuntamento
+                    </button>
+                  )}
+                </AnimatePresence>
               </section>
 
-              {/* 2. Scala dolore 1–4 orizzontale */}
+              {/* 2. Dolore */}
               <section>
                 <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">
                   Dolore
@@ -213,7 +350,7 @@ export function SymptomTrackerModal({ isOpen, onClose, date }: SymptomTrackerMod
                 <div className="text-right text-xs text-gray-400 mt-1">{notes.length}/500</div>
               </section>
 
-              {/* 4. Ciclo: 3 pulsanti con gocce (opzionale) */}
+              {/* 4. Ciclo */}
               <section>
                 <h3 className="flex items-center gap-2 text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">
                   <Droplet size={18} className="text-red-400" />
@@ -235,43 +372,6 @@ export function SymptomTrackerModal({ isOpen, onClose, date }: SymptomTrackerMod
                     >
                       <Droplets count={opt.drops} />
                       <span>{opt.label}</span>
-                    </button>
-                  ))}
-                </div>
-              </section>
-
-              {/* 5. Terapia del giorno (allineata a pagina Terapia, non in anteprima calendario) */}
-              <section>
-                <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">
-                  Terapia del giorno
-                </h3>
-                <div className="space-y-2">
-                  {therapies.map((therapy) => (
-                    <button
-                      key={therapy.id}
-                      type="button"
-                      onClick={() => toggleTherapy(therapy.id)}
-                      className={cn(
-                        "w-full flex items-center justify-between p-4 rounded-2xl border-2 transition-all text-left",
-                        therapy.taken
-                          ? "border-[#14443F] bg-[#EBF5F0] text-[#14443F]"
-                          : "border-gray-100 bg-white text-gray-500 hover:bg-gray-50"
-                      )}
-                    >
-                      <div>
-                        <p className="font-bold">{therapy.name}</p>
-                        <p className="text-sm opacity-70">
-                          {therapy.dose} · {therapy.time}
-                        </p>
-                      </div>
-                      <div
-                        className={cn(
-                          "w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0",
-                          therapy.taken ? "bg-[#14443F] border-[#14443F]" : "border-gray-300"
-                        )}
-                      >
-                        {therapy.taken && <Check size={14} className="text-white" />}
-                      </div>
                     </button>
                   ))}
                 </div>
