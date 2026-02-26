@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { Plus, Droplet, Edit2, X, GlassWater, Coffee, Leaf, Citrus, Bottle } from "lucide-react";
+import { Plus, Droplet, Edit2, X, GlassWater, Coffee, Leaf, Citrus, BottleWine as Bottle } from "lucide-react";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
 import { motion, AnimatePresence } from "motion/react";
