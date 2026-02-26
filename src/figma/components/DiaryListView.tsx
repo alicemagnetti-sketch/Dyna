@@ -1,12 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { NotebookPen, Pencil, Trash2, ChevronRight, X } from "lucide-react";
+import { NotebookPen, Pencil, Trash2, X, Plus } from "lucide-react";
 import { format } from "date-fns";
-import { it } from "date-fns/locale";
 import { motion, AnimatePresence } from "motion/react";
 import type { Diary, DiaryType } from "@/lib/diaries";
-import { DIARY_TYPE_LABELS } from "@/lib/diaries";
 import { cn } from "@/lib/utils";
 
 interface DiaryListViewProps {
@@ -38,99 +36,69 @@ export function DiaryListView({
           type="button"
           onClick={onCreateNew}
           className="inline-flex items-center gap-2 px-6 py-3 bg-[#14443F] text-white font-medium rounded-full hover:bg-[#0f332f] transition-colors"
+          aria-label="Aggiungi"
         >
-          Inizia un diario
+          Aggiungi
         </button>
       </div>
     );
   }
 
   return (
-    <div className="p-4 pt-8 pb-24 bg-[#F8FBF9] min-h-dvh">
-      <h2 className="text-2xl font-bold text-[#14443F] mb-6">Diari</h2>
-
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[480px]">
-            <thead>
-              <tr className="border-b border-gray-100 bg-gray-50/50">
-                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                  Nome diario
-                </th>
-                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                  Tipologia
-                </th>
-                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                  Data inizio
-                </th>
-                <th className="w-24 py-3 px-2 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                  Azioni
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {diaries.map((diary) => (
-                <tr
-                  key={diary.id}
-                  className="hover:bg-gray-50/50 transition-colors group"
-                >
-                  <td className="py-3 px-4">
-                    <button
-                      type="button"
-                      onClick={() => onSelect(diary)}
-                      className="flex items-center gap-2 text-left w-full font-medium text-[#14443F] hover:underline"
-                    >
-                      {diary.name}
-                      <ChevronRight size={18} className="text-gray-400 shrink-0" />
-                    </button>
-                  </td>
-                  <td className="py-3 px-4 text-sm text-gray-600">
-                    {DIARY_TYPE_LABELS[diary.type]}
-                  </td>
-                  <td className="py-3 px-4 text-sm text-gray-600">
-                    {format(new Date(diary.startDate + "T12:00:00"), "d MMM yyyy", { locale: it })}
-                  </td>
-                  <td className="py-3 px-2 text-right">
-                    <div className="flex items-center justify-end gap-1">
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onEdit(diary);
-                        }}
-                        className="p-2 rounded-full hover:bg-gray-100 text-gray-500 hover:text-[#14443F] transition-colors"
-                        aria-label="Modifica diario"
-                      >
-                        <Pencil size={18} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setDeleteConfirm(diary);
-                        }}
-                        className="p-2 rounded-full hover:bg-red-50 text-gray-500 hover:text-red-600 transition-colors"
-                        aria-label="Elimina diario"
-                      >
-                        <Trash2 size={18} />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <div className="mt-6 flex justify-center">
+    <div className="p-4 pt-8 space-y-6 pb-24 bg-[#F8FBF9] min-h-dvh">
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold text-[#14443F]">Diari</h2>
         <button
           type="button"
           onClick={onCreateNew}
-          className="inline-flex items-center gap-2 px-5 py-2.5 border-2 border-[#14443F] text-[#14443F] font-medium rounded-full hover:bg-[#EBF5F0] transition-colors"
+          className="p-2 bg-[#EBF5F0] rounded-full text-[#14443F]"
+          aria-label="Aggiungi diario"
         >
-          Aggiungi diario
+          <Plus size={24} />
         </button>
+      </div>
+
+      <div className="space-y-4">
+        {diaries.map((diary) => (
+          <div
+            key={diary.id}
+            className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden group hover:border-[#14443F] transition-all"
+          >
+            <div className="p-4 flex items-center justify-between gap-3">
+              <button
+                type="button"
+                onClick={() => onSelect(diary)}
+                className="flex-1 flex items-center gap-2 text-left min-w-0 font-medium text-[#14443F] hover:underline"
+              >
+                <span className="min-w-0 truncate text-xl font-semibold">{diary.name}</span>
+              </button>
+              <div className="flex items-center gap-1 shrink-0">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onEdit(diary);
+                  }}
+                  className="p-2 rounded-full hover:bg-gray-100 text-gray-500 hover:text-[#14443F] transition-colors"
+                  aria-label="Modifica diario"
+                >
+                  <Pencil size={18} />
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setDeleteConfirm(diary);
+                  }}
+                  className="p-2 rounded-full hover:bg-red-50 text-gray-500 hover:text-red-600 transition-colors"
+                  aria-label="Elimina diario"
+                >
+                  <Trash2 size={18} />
+                </button>
+              </div>
+            </div>
+          </div>
+        ))}
       </div>
 
       <AnimatePresence>

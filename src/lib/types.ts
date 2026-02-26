@@ -90,15 +90,26 @@ export type DailyLogDraft = Omit<DailyLog, "id" | "createdAt" | "updatedAt"> & {
   updatedAt?: ISODateTime;
 };
 
-export type VoidingEntry = {
+export type FluidIntakeType = "acqua" | "caffe" | "te" | "succo" | "altro";
+
+export type FluidIntake = {
   id: string;
+  diaryId: string;
   date: ISODate;
   timestamp: ISODateTime;
-  volumeMl: number | null;
-  urgency: 1 | 2 | 3 | 4 | 5;
-  pain: boolean;
-  painIntensity: PainLevel;
-  notes: string;
+  type: FluidIntakeType;
+  volume_ml: number;
+  label?: string;
+};
+
+export type VoidingEntry = {
+  id: string;
+  diaryId: string;
+  date: ISODate;
+  timestamp: ISODateTime;
+  volume_ml: number | null;
+  urgency: boolean;
+  burning: boolean;
 };
 
 export type Appointment = {
@@ -115,6 +126,7 @@ export type DynaData = {
   profile: Profile;
   dailyLogs: DailyLog[];
   medications: MedicationLight[];
+  fluidIntakes: FluidIntake[];
   voidingEntries: VoidingEntry[];
   appointments: Appointment[];
 };

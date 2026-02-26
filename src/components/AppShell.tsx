@@ -8,7 +8,7 @@ import { CalendarUpcoming } from "@/figma/components/CalendarUpcoming";
 import { EditAppointmentModal } from "@/figma/components/EditAppointmentModal";
 import { SymptomTrackerModal } from "@/figma/components/SymptomTracker";
 import { DayOverviewModal } from "@/figma/components/DayOverviewModal";
-import { BottomNav, type FabAction } from "@/figma/components/BottomNav";
+import { BottomNav } from "@/figma/components/BottomNav";
 import { TherapyView } from "@/figma/components/TherapyView";
 import { EditTherapyModal } from "@/figma/components/EditTherapyModal";
 import { DiaryView } from "@/figma/components/DiaryView";
@@ -28,18 +28,6 @@ export default function AppShell() {
   const { getEntry } = useDayEntries();
   const { profile } = useProfile();
   useNotificationChecker();
-
-  const handleFabAction = (action: FabAction) => {
-    if (action === "appointment") {
-      setSymptomModalOpenAddForm(true);
-      setSymptomModalOpen(true);
-    } else if (action === "symptom") {
-      setSymptomModalOpenAddForm(false);
-      setSymptomModalOpen(true);
-    } else if (action === "therapy") {
-      setAddTherapyOpen(true);
-    }
-  };
 
   const handleSelectDate = (date: Date) => {
     setSelectedDate(date);
@@ -76,7 +64,6 @@ export default function AppShell() {
       <BottomNav
         activeTab={activeTab}
         onTabChange={setActiveTab}
-        onFabAction={handleFabAction}
       />
 
       <DayOverviewModal

@@ -43,7 +43,7 @@ export function ProfileView() {
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
   const [permission, setPermission] = useState<NotificationPermission | null>(null);
   const [prefs, setPrefs] = useState(() =>
-    typeof window !== "undefined" ? getNotificationPrefs() : { medicineEnabled: false, appointmentEnabled: false, appointmentMinutesBefore: 15 }
+    typeof window !== "undefined" ? getNotificationPrefs() : { medicineEnabled: false, appointmentEnabled: false, appointmentMinutesBefore: 15, therapyChangeEnabled: true }
   );
   const currentPermission =
     permission ?? (typeof window !== "undefined" ? getNotificationPermission() : "default");
@@ -83,6 +83,11 @@ export function ProfileView() {
   const handleAppointmentMinutes = (value: number) => {
     setNotificationPrefs({ appointmentMinutesBefore: value });
     setPrefs((p) => ({ ...p, appointmentMinutesBefore: value }));
+  };
+
+  const handleTherapyChangeToggle = (enabled: boolean) => {
+    setNotificationPrefs({ therapyChangeEnabled: enabled });
+    setPrefs((p) => ({ ...p, therapyChangeEnabled: enabled }));
   };
 
   const handleResetConfirm = () => {
@@ -186,6 +191,20 @@ export function ProfileView() {
                   >
                     <span
                       className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${prefs.appointmentEnabled ? "left-6" : "left-1"}`}
+                    />
+                  </button>
+                </label>
+                <label className="flex items-center justify-between gap-4 cursor-pointer">
+                  <span className="text-sm font-medium text-[#14443F]">Avvisami quando una terapia cambia</span>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={prefs.therapyChangeEnabled}
+                    onClick={() => handleTherapyChangeToggle(!prefs.therapyChangeEnabled)}
+                    className={`relative w-11 h-6 rounded-full transition-colors ${prefs.therapyChangeEnabled ? "bg-[#14443F]" : "bg-gray-200"}`}
+                  >
+                    <span
+                      className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${prefs.therapyChangeEnabled ? "left-6" : "left-1"}`}
                     />
                   </button>
                 </label>

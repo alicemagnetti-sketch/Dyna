@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import { useDayEntries } from "@/context/DayEntriesContext";
 import { getUpcomingAppointments, getAppointmentTypeLabel } from "@/lib/day-entries";
-import { checkMedicineReminders, checkAppointmentReminders } from "@/lib/notifications";
+import { checkMedicineReminders, checkAppointmentReminders, checkTherapyChanges, checkTherapyVariationReminders } from "@/lib/notifications";
 import { loadTherapyPlan } from "@/lib/therapy";
 
 export function useNotificationChecker() {
@@ -14,12 +14,13 @@ export function useNotificationChecker() {
     if (typeof document === "undefined") return;
 
     function check() {
-      if (!document.hasFocus?.() && document.visibilityState !== "visible") return;
       const plan = loadTherapyPlan();
       const therapyNames: Record<number, string> = Object.fromEntries(
         plan.filter((t) => !t.paused).map((t) => [t.id, t.name])
       );
       checkMedicineReminders(therapyNames);
+      checkTherapyChanges(plan);
+      checkTherapyVariationReminders(plan);
       const upcoming = getUpcomingAppointments(entries, 7);
       const list = upcoming.map(({ dateKey, appointment }) => ({
         id: appointment.id,

@@ -1,4 +1,4 @@
-import type { DailyLog, DailyLogDraft, DynaData, Profile, SwabScores } from "./types";
+import type { DailyLog, DailyLogDraft, DynaData, FluidIntake, Profile, SwabScores, VoidingEntry } from "./types";
 
 const STORAGE_KEY = "dyna_data_v1";
 
@@ -27,6 +27,7 @@ export function getEmptyData(): DynaData {
     },
     dailyLogs: [],
     medications: [],
+    fluidIntakes: [],
     voidingEntries: [],
     appointments: [],
   };
@@ -39,7 +40,10 @@ export function loadData(): DynaData {
   if (!raw) return getEmptyData();
 
   try {
-    return JSON.parse(raw) as DynaData;
+    const data = JSON.parse(raw) as DynaData;
+    if (!Array.isArray(data.fluidIntakes)) data.fluidIntakes = [];
+    if (!Array.isArray(data.voidingEntries)) data.voidingEntries = [];
+    return data;
   } catch {
     return getEmptyData();
   }
@@ -158,6 +162,80 @@ export function listDailyLogsInMonth(year: number, month: number): DailyLog[] {
   return data.dailyLogs.filter((log) => log.date.startsWith(prefix));
 }
 
+// ---- Voiding diary (fluid intakes + voiding entries) ----
+
+function isNewShapeVoidingEntry(e: unknown): e is VoidingEntry {
+  return (
+    typeof e === "object" &&
+    e !== null &&
+    "id" in e &&
+    "diaryId" in e &&
+    "date" in e &&
+    "timestamp" in e &&
+    "urgency" in e &&
+    typeof (e as VoidingEntry).urgency === "boolean" &&
+    "burning" in e &&
+    typeof (e as VoidingEntry).burning === "boolean"
+  );
+}
+
+export function getVoidingEntries(diaryId: string, date: string): VoidingEntry[] {
+  const data = loadData();
+  return data.voidingEntries.filter(
+    (e) => isNewShapeVoidingEntry(e) && e.diaryId === diaryId && e.date === date
+  );
+}
+
+export function getFluidIntakes(diaryId: string, date: string): FluidIntake[] {
+  const data = loadData();
+  return (data.fluidIntakes ?? []).filter((f) => f.diaryId === diaryId && f.date === date);
+}
+
+export function getFluidIntakesForDiary(diaryId: string): FluidIntake[] {
+  const data = loadData();
+  return (data.fluidIntakes ?? []).filter((f) => f.diaryId === diaryId);
+}
+
+export function getVoidingEntriesForDiary(diaryId: string): VoidingEntry[] {
+  const data = loadData();
+  return data.voidingEntries.filter(
+    (e) => isNewShapeVoidingEntry(e) && e.diaryId === diaryId
+  );
+}
+
+export function upsertVoidingEntry(entry: VoidingEntry): DynaData {
+  const data = loadData();
+  const idx = data.voidingEntries.findIndex((e) => e.id === entry.id);
+  const next = idx === -1 ? [...data.voidingEntries, entry] : data.voidingEntries.map((e, i) => (i === idx ? entry : e));
+  const updated: DynaData = { ...data, voidingEntries: next };
+  saveData(updated);
+  return updated;
+}
+
+export function removeVoidingEntry(id: string): DynaData {
+  const data = loadData();
+  const updated: DynaData = { ...data, voidingEntries: data.voidingEntries.filter((e) => e.id !== id) };
+  saveData(updated);
+  return updated;
+}
+
+export function upsertFluidIntake(entry: FluidIntake): DynaData {
+  const data = loadData();
+  const intakes = data.fluidIntakes ?? [];
+  const idx = intakes.findIndex((f) => f.id === entry.id);
+  const next = idx === -1 ? [...intakes, entry] : intakes.map((f, i) => (i === idx ? entry : f));
+  const updated: DynaData = { ...data, fluidIntakes: next };
+  saveData(updated);
+  return updated;
+}
+
+export function removeFluidIntake(id: string): DynaData {
+  const data = loadData();
+  const updated: DynaData = { ...data, fluidIntakes: (data.fluidIntakes ?? []).filter((f) => f.id !== id) };
+  saveData(updated);
+  return updated;
+}
+
 /** Chiavi localStorage usate dall'app (per reset completo) */
 const ALL_APP_KEYS = [
   "dyna_data_v1",
@@ -167,6 +245,8 @@ const ALL_APP_KEYS = [
   "dyna_notifications_shown_v1",
   "dyna_notification_prefs_v1",
   "dyna_notification_log_v1",
+  "dyna_therapy_snapshot_v1",
+  "dyna_therapy_variation_shown_v1",
   "dyna-therapy-plan",
   "dyna-therapy-history",
 ];

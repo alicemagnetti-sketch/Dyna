@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { X, Save, Plus, CalendarClock, Droplet, ChevronDown, ChevronUp, Pencil, Trash2, Activity } from "lucide-react";
+import { X, Save, Plus, CalendarClock, Droplet, ChevronDown, ChevronUp, Pencil, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useDayEntries } from "@/context/DayEntriesContext";
 import {
@@ -293,12 +293,10 @@ export function SymptomTrackerModal({
             <div className="flex-1 overflow-y-auto p-6 space-y-8 pb-28">
               {/* 1. Appuntamenti */}
               <section>
-                {!appointmentOnly && showAddAppointmentRow && (
                 <h3 className="flex items-center gap-2 text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">
                   <CalendarClock size={18} />
                   Appuntamenti
                 </h3>
-                )}
                 <div className="space-y-2">
                   {appointments.map((apt) => {
                     const isExpanded = expandedAptId === apt.id;
@@ -384,7 +382,7 @@ export function SymptomTrackerModal({
                   })}
                 </div>
 
-                {showAddAppointmentRow && (
+                {(showAddAppointmentRow || !appointmentOnly) && (
                 <AnimatePresence>
                   {showAddForm ? (
                     <motion.div
@@ -478,9 +476,8 @@ export function SymptomTrackerModal({
               <>
               {/* 2. Dolore (stessa struttura scala del Ciclo: icona + etichetta) */}
               <section>
-                <h3 className="flex items-center gap-2 text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">
-                  <Activity size={18} className="text-[#5C8D89]" />
-                  Scala dolore
+                <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">
+                  Dolore
                 </h3>
                 <p className="text-xs text-gray-500 mb-2">Seleziona l&apos;intensità del dolore.</p>
                 <div className="grid grid-cols-4 gap-2">
@@ -496,9 +493,8 @@ export function SymptomTrackerModal({
                           : "border-gray-100 bg-gray-50 text-gray-400 hover:bg-gray-100"
                       )}
                     >
-                      <Activity size={18} className={painLevel === level ? "opacity-90" : "opacity-60"} aria-hidden />
                       <span>{level}</span>
-                      <span className="text-[10px] font-medium opacity-90">
+                      <span className="text-[14px] font-medium opacity-90">
                         {PAIN_LABELS[level]}
                       </span>
                     </button>
@@ -532,8 +528,7 @@ export function SymptomTrackerModal({
 
               {/* 4. Ciclo */}
               <section>
-                <h3 className="flex items-center gap-2 text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">
-                  <Droplet size={18} className="text-red-400" />
+                <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">
                   Ciclo
                 </h3>
                 <p className="text-xs text-gray-500 mb-2">Seleziona solo se presente oggi.</p>

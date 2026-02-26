@@ -2,15 +2,13 @@
 /* Il tuo Piano: card con Giorno/Notte per creme, orario solo se impostato per orali */
 
 import { useState, useEffect } from "react";
-import { format } from "date-fns";
-import { it } from "date-fns/locale";
-import { Clock, Plus, Pencil, FileText, Sun, Moon, Pill } from "lucide-react";
+import { Clock, Plus, Pencil, FileText, Sun, Moon, Pill, Trash2 } from "lucide-react";
 import { useTherapyPlan } from "@/context/TherapyPlanContext";
 import {
   type TherapyPlanItem,
   THERAPY_FORM_LABELS,
-  isOralForm,
   getTherapyDoseDisplay,
+  getTherapyTimeDisplay,
 } from "@/lib/therapy";
 import { EditTherapyModal } from "./EditTherapyModal";
 
@@ -55,7 +53,7 @@ interface TherapyViewProps {
 }
 
 export function TherapyView({ openAddTherapy, onAddTherapyClose }: TherapyViewProps = {}) {
-  const { plan, history } = useTherapyPlan();
+  const { plan, removeItem } = useTherapyPlan();
   const [editingId, setEditingId] = useState<number | null>(null);
   const [addingNew, setAddingNew] = useState(false);
 
@@ -69,21 +67,35 @@ export function TherapyView({ openAddTherapy, onAddTherapyClose }: TherapyViewPr
 
   if (plan.length === 0) {
     return (
-      <div className="min-h-dvh flex flex-col items-center justify-center px-6 pb-24 bg-[#F8FBF9]">
-        <div className="rounded-full bg-[#EBF5F0] p-8 mb-6" aria-hidden>
-          <Pill size={64} className="text-[#14443F]" strokeWidth={1.5} />
+      <>
+        <div className="min-h-dvh flex flex-col items-center justify-center px-6 pb-24 bg-[#F8FBF9]">
+          <div className="rounded-full bg-[#EBF5F0] p-8 mb-6" aria-hidden>
+            <Pill size={64} className="text-[#14443F]" strokeWidth={1.5} />
+          </div>
+          <h2 className="text-xl font-bold text-[#14443F] text-center mb-2">Non hai terapie attive</h2>
+          <p className="text-gray-500 text-sm text-center mb-8">Aggiungi un farmaco per tenere traccia del tuo piano.</p>
+          <button
+            type="button"
+            onClick={() => setAddingNew(true)}
+            className="inline-flex items-center gap-2 px-6 py-3 bg-[#14443F] text-white font-medium rounded-full hover:bg-[#0f332f] transition-colors"
+            aria-label="Aggiungi"
+          >
+            Aggiungi
+          </button>
         </div>
-        <h2 className="text-xl font-bold text-[#14443F] text-center mb-2">Non hai terapie attive</h2>
-        <p className="text-gray-500 text-sm text-center mb-8">Aggiungi un farmaco per tenere traccia del tuo piano.</p>
-        <button
-          type="button"
-          onClick={() => setAddingNew(true)}
-          className="inline-flex items-center gap-2 px-6 py-3 bg-[#14443F] text-white font-medium rounded-full hover:bg-[#0f332f] transition-colors"
-          aria-label="Aggiungi un farmaco"
-        >
-          Aggiungi un farmaco
-        </button>
-      </div>
+        <EditTherapyModal
+          isOpen={addingNew}
+          onClose={() => {
+            setAddingNew(false);
+            onAddTherapyClose?.();
+          }}
+          therapy={null}
+          onSaved={() => {
+            setAddingNew(false);
+            onAddTherapyClose?.();
+          }}
+        />
+      </>
     );
   }
 
@@ -146,29 +158,22 @@ export function TherapyView({ openAddTherapy, onAddTherapyClose }: TherapyViewPr
                       )}
                     </div>
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 mt-1">
-                      {isOralForm(therapy.form) && (
+                      {getTherapyTimeDisplay(therapy) && (
                         <>
-                          {therapy.time?.trim() && (
-                            <>
-                              <span className="flex items-center gap-1 font-medium bg-gray-50 px-1.5 py-0.5 rounded">
-                                <Clock size={10} /> {therapy.time}
-                              </span>
-                              <span className="text-gray-300">•</span>
-                            </>
-                          )}
-                          <span>{getTherapyDoseDisplay(therapy)}</span>
+                          <span className="flex items-center gap-1 font-medium bg-gray-50 px-1.5 py-0.5 rounded">
+                            {therapy.creamTimeOfDay === "day" ? (
+                              <Sun size={10} />
+                            ) : therapy.creamTimeOfDay === "night" ? (
+                              <Moon size={10} />
+                            ) : (
+                              <Clock size={10} />
+                            )}{" "}
+                            {getTherapyTimeDisplay(therapy)}
+                          </span>
+                          <span className="text-gray-300">•</span>
                         </>
                       )}
-                      {therapy.form === "crema" && therapy.creamTimeOfDay && (
-                        <span className="flex items-center gap-1 font-medium bg-gray-50 px-1.5 py-0.5 rounded">
-                          {therapy.creamTimeOfDay === "day" ? (
-                            <Sun size={10} /> 
-                          ) : (
-                            <Moon size={10} />
-                          )}{" "}
-                          {therapy.creamTimeOfDay === "day" ? "Giorno" : "Notte"}
-                        </span>
-                      )}
+                      <span>{getTherapyDoseDisplay(therapy)}</span>
                     </div>
                     {therapy.notes.trim() !== "" && (
                       <div className="mt-2 flex items-start gap-1.5 text-xs text-gray-500">
@@ -192,40 +197,34 @@ export function TherapyView({ openAddTherapy, onAddTherapyClose }: TherapyViewPr
                     </p>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => setEditingId(therapy.id)}
-                    className="p-2 rounded-full hover:bg-gray-100 text-gray-400 transition-colors shrink-0"
-                    aria-label="Modifica"
-                  >
-                    <Pencil size={18} />
-                  </button>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => setEditingId(therapy.id)}
+                      className="p-2 rounded-full hover:bg-gray-100 text-gray-400 transition-colors"
+                      aria-label="Modifica"
+                    >
+                      <Pencil size={18} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (typeof window !== "undefined" && window.confirm(`Eliminare "${therapy.name}" dal piano?`)) {
+                          removeItem(therapy.id);
+                        }
+                      }}
+                      className="p-2 rounded-full hover:bg-red-50 text-gray-400 hover:text-red-600 transition-colors"
+                      aria-label="Elimina terapia"
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
           );
         })}
         </>
-      </div>
-
-      <div className="pt-4 border-t border-gray-100">
-        <h3 className="font-bold text-[#14443F] text-lg mb-4">Storico Modifiche</h3>
-        <div className="pl-4 border-l-2 border-gray-200 space-y-6 relative">
-          {history.length === 0 ? (
-            <p className="text-sm text-gray-400 italic">Nessuna modifica registrata</p>
-          ) : (
-            history.map((item) => (
-              <div key={item.id} className="relative">
-                <div className="absolute -left-[21px] top-1 w-3 h-3 rounded-full bg-gray-400 border-2 border-white box-content" />
-                <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-0.5">
-                  {format(new Date(item.date), "d MMM yyyy", { locale: it })}
-                </p>
-                <p className="font-bold text-[#14443F]">{item.action}</p>
-                <p className="text-sm text-gray-500">{item.detail}</p>
-              </div>
-            ))
-          )}
-        </div>
       </div>
 
       <EditTherapyModal

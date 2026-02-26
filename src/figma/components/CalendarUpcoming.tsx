@@ -1,21 +1,20 @@
 "use client";
 /* Widget Terapie di oggi: solo farmaci da assumere oggi, dose solo orali, orario/giorno-notte se impostato */
 
-import { useMemo } from "react";
-import { CalendarClock, Pencil } from "lucide-react";
+import { useMemo, useState } from "react";
+import { CalendarClock, Pencil, ChevronDown, ChevronUp } from "lucide-react";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
 import { useDayEntries } from "@/context/DayEntriesContext";
 import { useTherapyPlan } from "@/context/TherapyPlanContext";
 import {
-  getNextAppointment,
+  getUpcomingAppointments,
   getAppointmentTypeLabel,
   parseDateKey,
 } from "@/lib/day-entries";
 import {
   getTherapyDoseDisplay,
   getTherapyTimeDisplay,
-  isOralForm,
   shouldShowTherapyToday,
 } from "@/lib/therapy";
 import type { Appointment } from "@/lib/day-entries";
@@ -34,7 +33,11 @@ export function CalendarUpcoming({ onEditAppointment }: CalendarUpcomingProps) {
   const { entries } = useDayEntries();
   const { plan } = useTherapyPlan();
   const today = new Date();
-  const next = getNextAppointment(entries);
+  const upcomingList = useMemo(
+    () => getUpcomingAppointments(entries),
+    [entries]
+  );
+  const [appointmentsExpanded, setAppointmentsExpanded] = useState(false);
   const therapiesToday = useMemo(
     () =>
       [...plan]
@@ -49,34 +52,61 @@ export function CalendarUpcoming({ onEditAppointment }: CalendarUpcomingProps) {
       <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
         Prossimi appuntamenti
       </p>
-      {next ? (
-        <div className="w-full flex items-start gap-3 p-3 rounded-2xl bg-gray-50 text-left group">
-          <CalendarClock size={20} className="text-[#14443F] shrink-0 mt-0.5" />
-          <div className="flex-1 min-w-0">
-            <p className="font-medium text-[#14443F]">
-              {getAppointmentTypeLabel(next.appointment)}
-            </p>
-            <p className="text-sm text-gray-600">
-              {format(parseDateKey(next.dateKey), "EEEE d MMMM", { locale: it })} ore{" "}
-              {next.appointment.time}
-            </p>
-            {next.appointment.place && (
-              <p className="text-xs text-gray-500 mt-0.5">{next.appointment.place}</p>
-            )}
-          </div>
-          {onEditAppointment && (
+      {upcomingList.length === 0 ? (
+        <p className="text-sm text-gray-400 italic py-1">Nessun appuntamento in programma</p>
+      ) : (
+        <div className="space-y-2">
+          {(appointmentsExpanded ? upcomingList : upcomingList.slice(0, 1)).map((item) => (
+            <div
+              key={`${item.dateKey}-${item.appointment.id}`}
+              className="w-full flex items-start gap-3 p-3 rounded-2xl bg-gray-50 text-left group"
+            >
+              <CalendarClock size={20} className="text-[#14443F] shrink-0 mt-0.5" />
+              <div className="flex-1 min-w-0">
+                <p className="font-medium text-[#14443F]">
+                  {getAppointmentTypeLabel(item.appointment)}
+                </p>
+                <p className="text-sm text-gray-600">
+                  {format(parseDateKey(item.dateKey), "EEEE d MMMM", { locale: it })} ore{" "}
+                  {item.appointment.time}
+                </p>
+                {item.appointment.place && (
+                  <p className="text-xs text-gray-500 mt-0.5">{item.appointment.place}</p>
+                )}
+              </div>
+              {onEditAppointment && (
+                <button
+                  type="button"
+                  onClick={() => onEditAppointment(item.dateKey, item.appointment)}
+                  className="shrink-0 p-2 rounded-full text-[#14443F] opacity-70 hover:opacity-100 hover:bg-gray-100 transition-colors"
+                  aria-label="Modifica appuntamento"
+                >
+                  <Pencil size={18} />
+                </button>
+              )}
+            </div>
+          ))}
+          {upcomingList.length > 1 && (
             <button
               type="button"
-              onClick={() => onEditAppointment(next.dateKey, next.appointment)}
-              className="shrink-0 p-2 rounded-full text-[#14443F] opacity-70 hover:opacity-100 hover:bg-gray-100 transition-colors"
-              aria-label="Modifica appuntamento"
+              onClick={() => setAppointmentsExpanded((e) => !e)}
+              className="w-full flex items-center justify-center gap-2 py-2 text-sm font-medium text-[#14443F] hover:bg-gray-50 rounded-xl transition-colors"
+              aria-expanded={appointmentsExpanded}
             >
-              <Pencil size={18} />
+              {appointmentsExpanded ? (
+                <>
+                  <ChevronUp size={18} />
+                  Mostra meno
+                </>
+              ) : (
+                <>
+                  <ChevronDown size={18} />
+                  Vedi tutti ({upcomingList.length})
+                </>
+              )}
             </button>
           )}
         </div>
-      ) : (
-        <p className="text-sm text-gray-400 italic py-1">Nessun appuntamento in programma</p>
       )}
 
       {/* Separatore 1px gray-300 */}
@@ -91,7 +121,7 @@ export function CalendarUpcoming({ onEditAppointment }: CalendarUpcomingProps) {
           <p className="text-sm text-gray-400 italic py-1">Nessuna terapia in corso</p>
         ) : (
           therapiesToday.map((t) => {
-            const dose = isOralForm(t.form) ? getTherapyDoseDisplay(t) : "";
+            const dose = getTherapyDoseDisplay(t);
             const timeLabel = getTherapyTimeDisplay(t);
             const subtitle = [dose, timeLabel].filter(Boolean).join(" · ");
             return (

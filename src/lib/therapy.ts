@@ -10,7 +10,61 @@ export type TherapyFormType =
   | "bustine"
   | "supposta"
   | "integratore"
+  | "ovulo"
   | "altro";
+
+/** Tipologia mostrata in modale (6 opzioni). supposta/integratore mappati a ovulo/altro. */
+export const TIPOLOGIA_FORM_OPTIONS: { value: TherapyFormType; label: string }[] = [
+  { value: "pastiglia", label: "Pastiglia" },
+  { value: "bustine", label: "Bustine" },
+  { value: "gocce", label: "Gocce" },
+  { value: "crema", label: "Crema" },
+  { value: "ovulo", label: "Ovulo" },
+  { value: "altro", label: "Altro" },
+];
+
+export type PosologyPeriod = "day" | "month" | "year";
+
+/** Posologia: n volte per periodo × n periodi (es. 1 volta al giorno x 4 mesi) */
+export interface Posology {
+  /** Es. 1 = una volta */
+  doseValue: number;
+  /** Periodo sinistro: Giorno, Mese, Anno (es. "volta al giorno") */
+  dosePeriod: PosologyPeriod;
+  /** Es. 4 */
+  freqValue: number;
+  /** Periodo destro: Giorno, Mese, Anno (es. "4 mesi") */
+  freqPeriod: PosologyPeriod;
+}
+
+export const POSOLOGY_PERIOD_LABELS: Record<PosologyPeriod, string> = {
+  day: "Giorno",
+  month: "Mese",
+  year: "Anno",
+};
+
+/** Etichette per la parte sinistra: "volta al giorno", "volta al mese", "volta all'anno" */
+export const POSOLOGY_DOSE_PERIOD_LABELS: Record<PosologyPeriod, string> = {
+  day: "volta al giorno",
+  month: "volta al mese",
+  year: "volta all'anno",
+};
+
+/** Etichette plurali per la parte destra: "giorni", "mesi", "anni" */
+export const POSOLOGY_FREQ_PERIOD_LABELS_PLURAL: Record<PosologyPeriod, string> = {
+  day: "giorni",
+  month: "mesi",
+  year: "anni",
+};
+
+/** La terapia varia nel tempo: da q.tà iniziale aumenta fino a q.tà finale */
+export interface TherapyVariation {
+  initialQty: number;
+  increaseBy: number;
+  everyValue: number;
+  everyPeriod: PosologyPeriod;
+  finalQty: number;
+}
 
 export type DurationType = "days" | "months" | "days_per_month";
 
@@ -39,31 +93,37 @@ export interface GocceRamp {
 export interface TherapyPlanItem {
   id: number;
   name: string;
-  /** Formato: crema, gocce, pastiglia, bustine, ecc. */
+  /** Tipologia: pastiglia, bustine, gocce, crema, ovulo, altro */
   form: TherapyFormType;
-  /** Quantità (es. "10mg", "1 bustina") – per orali; per gocce può essere usata con gocceRamp */
+  /** Specifica se form === "altro" */
+  formOther?: string | null;
+  /** Quantità/posologia (testo libero o derivato da posology per display) */
   quantity: string;
+  /** Posologia strutturata (opzionale, usata dalla modale unificata) */
+  posology?: Posology | null;
   /** Data inizio terapia (YYYY-MM-DD) */
   startDate: string;
-  /** Durata: x giorni, x mesi, x giorni/mese */
+  /** Durata: x giorni, x mesi (non in modale, default in save) */
   duration: TherapyDuration;
-  /** Data da cui cambia quantità (opzionale) – solo per non-gocce o come fallback */
+  /** @deprecated usare therapyVariation */
   quantityChangeDate: string | null;
-  /** Nuova quantità dopo quantityChangeDate (opzionale) */
+  /** @deprecated usare therapyVariation */
   quantityAfterChange: string | null;
-  /** Solo per form "gocce": aumento progressivo (es. +1 ogni 7 gg fino a 12) */
+  /** @deprecated usare therapyVariation */
   gocceRamp: GocceRamp | null;
+  /** La terapia varia nel tempo (q.tà iniziale → finale) */
+  therapyVariation?: TherapyVariation | null;
   /** Alternare con altro farmaco (id) */
   alternateWithId: number | null;
   /** Frequenza alternanza */
   alternateFrequency: AlternateFrequencyType | null;
   /** Valore mesi per alternanza "x mesi / x mesi" */
   alternateMonthsValue: number | null;
-  /** Ora assunzione (solo se orale) – HH:mm; opzionale se vuoto non mostrare orario */
+  /** Ora assunzione – HH:mm */
   time: string;
-  /** Solo per crema: applicazione mattina (giorno) o sera (notte) */
+  /** Giorno (mattina) o Notte (sera) – usato per tutti i tipi */
   creamTimeOfDay: "day" | "night" | null;
-  /** In pausa */
+  /** In pausa (non in modale, default false in save) */
   paused: boolean;
   /** Note libere per la terapia */
   notes: string;
@@ -76,6 +136,7 @@ export const THERAPY_FORM_LABELS: Record<TherapyFormType, string> = {
   bustine: "Bustine",
   supposta: "Supposta",
   integratore: "Integratore",
+  ovulo: "Ovulo",
   altro: "Altro",
 };
 
@@ -90,6 +151,46 @@ export const ALTERNATE_FREQUENCY_LABELS: Record<AlternateFrequencyType, string> 
   "1_week_1_week": "1 settimana uno, 1 settimana l'altra",
   "x_months_x_months": "X mesi uno, X mesi l'altro",
 };
+
+/** Mappa form salvato a una delle 6 tipologie modale (supposta→ovulo, integratore→altro). */
+export function formToTipologia(form: TherapyFormType): TherapyFormType {
+  if (form === "supposta") return "ovulo";
+  if (form === "integratore") return "altro";
+  return form;
+}
+
+/** Unità posologia per tipologia (es. pastiglia → mg, crema → applicazioni). */
+export function getPosologyUnits(form: TherapyFormType): string[] {
+  switch (form) {
+    case "pastiglia":
+    case "ovulo":
+    case "supposta":
+      return ["mg", "ml", "unità"];
+    case "bustine":
+      return ["bustina/e", "mg"];
+    case "gocce":
+      return ["gocce", "mg"];
+    case "crema":
+      return ["applicazioni", "pomate", "g"];
+    case "integratore":
+    case "altro":
+    default:
+      return ["mg", "ml", "gocce", "bustina/e", "applicazioni", "unità"];
+  }
+}
+
+/** Da posologia strutturata a stringa per quantity (es. "1 volta al giorno x 4 mesi"). */
+export function formatPosologyToQuantity(p: Posology & { doseUnit?: string }): string {
+  if ("dosePeriod" in p && p.dosePeriod) {
+    const doseBase = POSOLOGY_DOSE_PERIOD_LABELS[p.dosePeriod];
+    const doseLabel = p.doseValue === 1 ? doseBase : doseBase.replace(/^volta\s/, "volte ");
+    const freqLabel = p.freqValue === 1 ? POSOLOGY_PERIOD_LABELS[p.freqPeriod] : POSOLOGY_FREQ_PERIOD_LABELS_PLURAL[p.freqPeriod];
+    return `${p.doseValue} ${doseLabel} x ${p.freqValue} ${freqLabel}`;
+  }
+  // Legacy: doseUnit (es. "10 mg x 2 Giorno")
+  const periodLabel = POSOLOGY_PERIOD_LABELS[p.freqPeriod];
+  return `${p.doseValue} ${(p as { doseUnit?: string }).doseUnit ?? "mg"} x ${p.freqValue} ${periodLabel}`;
+}
 
 /** Formati considerati "orali" (mostrano quantità e ora) */
 export const ORAL_FORMS: TherapyFormType[] = [
@@ -147,18 +248,24 @@ export function shouldShowTherapyToday(
   return t.id === firstId ? showFirst : !showFirst;
 }
 
-/** Testo orario per display: per orali l'ora se impostata; per crema "Giorno"/"Notte" se impostato. */
+/** Testo orario per display: Giorno/Notte se impostato, altrimenti ora. */
 export function getTherapyTimeDisplay(t: TherapyPlanItem): string {
-  if (t.form === "crema") {
-    if (t.creamTimeOfDay === "day") return "Giorno";
-    if (t.creamTimeOfDay === "night") return "Notte";
-    return "";
-  }
+  if (t.creamTimeOfDay === "day") return "Giorno";
+  if (t.creamTimeOfDay === "night") return "Notte";
   return t.time?.trim() ? t.time : "";
 }
 
-/** Testo dose per display: per gocce con ramp es. "1 goccia → +1 ogni 7 gg fino a 12" */
+/** Testo dose per display: posologia, therapyVariation, gocceRamp legacy, o quantity. */
 export function getTherapyDoseDisplay(t: TherapyPlanItem): string {
+  if (t.posology) {
+    const main = formatPosologyToQuantity(t.posology);
+    if (t.therapyVariation) {
+      const v = t.therapyVariation;
+      const periodLabel = POSOLOGY_PERIOD_LABELS[v.everyPeriod];
+      return `${main} (da ${v.initialQty} a ${v.finalQty}, +${v.increaseBy} ogni ${v.everyValue} ${periodLabel})`;
+    }
+    return main;
+  }
   if (t.form === "gocce" && t.gocceRamp) {
     const r = t.gocceRamp;
     return `${r.startDrops} goccia/e → +${r.increaseBy} ogni ${r.increaseEveryDays} gg fino a ${r.maxDrops}`;
@@ -265,9 +372,12 @@ function normalizeItem(t: Partial<TherapyPlanItem> & { id: number; name: string;
   return {
     ...t,
     quantity: t.quantity ?? "",
+    formOther: t.formOther ?? null,
+    posology: t.posology ?? null,
     quantityChangeDate: t.quantityChangeDate ?? null,
     quantityAfterChange: t.quantityAfterChange ?? null,
     gocceRamp: t.gocceRamp ?? null,
+    therapyVariation: t.therapyVariation ?? null,
     alternateWithId: t.alternateWithId ?? null,
     alternateFrequency: t.alternateFrequency ?? null,
     alternateMonthsValue: t.alternateMonthsValue ?? null,
@@ -278,18 +388,18 @@ function normalizeItem(t: Partial<TherapyPlanItem> & { id: number; name: string;
 }
 
 export function loadTherapyPlan(): TherapyPlanItem[] {
-  if (typeof window === "undefined") return [...DEFAULT_THERAPY_PLAN];
+  if (typeof window === "undefined") return [];
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [...DEFAULT_THERAPY_PLAN];
+    if (!raw) return [];
     const parsed = JSON.parse(raw) as (TherapyPlanItem | Record<string, unknown>)[];
-    if (!Array.isArray(parsed) || parsed.length === 0) return [...DEFAULT_THERAPY_PLAN];
+    if (!Array.isArray(parsed) || parsed.length === 0) return [];
     return parsed.map((t) => {
       const item = t as Partial<TherapyPlanItem> & { id: number; name: string; form: TherapyFormType; startDate: string; duration: TherapyDuration; time: string };
       return normalizeItem(item);
     });
   } catch {
-    return [...DEFAULT_THERAPY_PLAN];
+    return [];
   }
 }
 

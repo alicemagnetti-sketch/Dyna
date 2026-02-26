@@ -3,18 +3,28 @@
  * controllo periodico e visualizzazione notifiche reali sul dispositivo.
  */
 
+import type { TherapyPlanItem, TherapyVariation, PosologyPeriod } from "@/lib/therapy";
+
 const REMINDERS_KEY = "dyna_reminders_v1";
 const SHOWN_KEY = "dyna_notifications_shown_v1";
 const PREFS_KEY = "dyna_notification_prefs_v1";
 const LOG_KEY = "dyna_notification_log_v1";
+const THERAPY_SNAPSHOT_KEY = "dyna_therapy_snapshot_v1";
+const THERAPY_VARIATION_SHOWN_KEY = "dyna_therapy_variation_shown_v1";
 
 export type MedicineReminder = { time: string; enabled: boolean };
 export type AppointmentReminder = { minutesBefore: number; enabled: boolean };
+
+/** Snapshot di una terapia per confronto (nome, quantità, ora, in pausa). */
+export type TherapySnapshotItem = { name: string; quantity: string; time: string; paused: boolean };
+export type TherapySnapshotState = Record<string, TherapySnapshotItem>;
 
 export interface NotificationPrefs {
   medicineEnabled: boolean;
   appointmentEnabled: boolean;
   appointmentMinutesBefore: number;
+  /** Avvisa quando una terapia viene modificata (quantità, orario, ecc.). */
+  therapyChangeEnabled: boolean;
 }
 
 export interface NotificationLogEntry {
@@ -130,18 +140,19 @@ export function getAllReminders(): RemindersState {
 
 function loadPrefs(): NotificationPrefs {
   if (typeof window === "undefined")
-    return { medicineEnabled: true, appointmentEnabled: true, appointmentMinutesBefore: 15 };
+    return { medicineEnabled: true, appointmentEnabled: true, appointmentMinutesBefore: 15, therapyChangeEnabled: true };
   try {
     const raw = window.localStorage.getItem(PREFS_KEY);
-    if (!raw) return { medicineEnabled: true, appointmentEnabled: true, appointmentMinutesBefore: 15 };
+    if (!raw) return { medicineEnabled: true, appointmentEnabled: true, appointmentMinutesBefore: 15, therapyChangeEnabled: true };
     const parsed = JSON.parse(raw) as NotificationPrefs;
     return {
       medicineEnabled: parsed.medicineEnabled ?? true,
       appointmentEnabled: parsed.appointmentEnabled ?? true,
       appointmentMinutesBefore: parsed.appointmentMinutesBefore ?? 15,
+      therapyChangeEnabled: parsed.therapyChangeEnabled ?? true,
     };
   } catch {
-    return { medicineEnabled: true, appointmentEnabled: true, appointmentMinutesBefore: 15 };
+    return { medicineEnabled: true, appointmentEnabled: true, appointmentMinutesBefore: 15, therapyChangeEnabled: true };
   }
 }
 
@@ -213,6 +224,32 @@ export function markAllNotificationsRead() {
 function todayKey(): string {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+/** Aggiunge amount periodi (day/month/year) a una data YYYY-MM-DD; restituisce YYYY-MM-DD. */
+function addPeriodToDate(dateKey: string, amount: number, period: PosologyPeriod): string {
+  const [y, m, d] = dateKey.split("-").map(Number);
+  const date = new Date(y, (m ?? 1) - 1, d ?? 1);
+  if (period === "day") {
+    date.setDate(date.getDate() + amount);
+  } else if (period === "month") {
+    date.setMonth(date.getMonth() + amount);
+  } else {
+    date.setFullYear(date.getFullYear() + amount);
+  }
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+/** Restituisce le dateKey (YYYY-MM-DD) in cui scatta la variazione: giorno 1, 2, 3... dall'inizio (ogni everyValue everyPeriod). */
+function getVariationDateKeys(startDate: string, v: TherapyVariation): string[] {
+  const steps = Math.max(0, Math.ceil((v.finalQty - v.initialQty) / v.increaseBy));
+  const keys: string[] = [];
+  let current = startDate;
+  for (let i = 0; i < steps; i++) {
+    current = addPeriodToDate(current, v.everyValue, v.everyPeriod);
+    keys.push(current);
+  }
+  return keys;
 }
 
 function nowMinutes(): number {
@@ -294,4 +331,116 @@ export function checkAppointmentReminders(
     shown.appointment[apt.id] = now;
     saveShown(shown);
   }
+}
+
+function loadTherapySnapshot(): TherapySnapshotState {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = window.localStorage.getItem(THERAPY_SNAPSHOT_KEY);
+    if (!raw) return {};
+    return JSON.parse(raw) as TherapySnapshotState;
+  } catch {
+    return {};
+  }
+}
+
+function saveTherapySnapshot(state: TherapySnapshotState) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(THERAPY_SNAPSHOT_KEY, JSON.stringify(state));
+  } catch {}
+}
+
+function therapyToSnapshotItem(t: TherapyPlanItem): TherapySnapshotItem {
+  return {
+    name: t.name,
+    quantity: t.quantity,
+    time: t.time,
+    paused: t.paused,
+  };
+}
+
+function snapshotEqual(a: TherapySnapshotItem, b: TherapySnapshotItem): boolean {
+  return a.name === b.name && a.quantity === b.quantity && a.time === b.time && a.paused === b.paused;
+}
+
+/** Stato notifiche "oggi varia" già mostrate: chiave `${therapyId}_${dateKey}`. */
+type VariationShownState = Record<string, true>;
+
+function loadVariationShown(): VariationShownState {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = window.localStorage.getItem(THERAPY_VARIATION_SHOWN_KEY);
+    if (!raw) return {};
+    return JSON.parse(raw) as VariationShownState;
+  } catch {
+    return {};
+  }
+}
+
+function saveVariationShown(state: VariationShownState) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(THERAPY_VARIATION_SHOWN_KEY, JSON.stringify(state));
+  } catch {}
+}
+
+/** Per ogni terapia con "la terapia varia nel tempo", se oggi è un giorno di variazione, mostra notifica (una volta per terapia/data). */
+export function checkTherapyVariationReminders(plan: TherapyPlanItem[]) {
+  const prefs = loadPrefs();
+  if (!prefs.therapyChangeEnabled) return;
+  const today = todayKey();
+  const shown = loadVariationShown();
+  for (const t of plan) {
+    if (t.paused || !t.therapyVariation) continue;
+    const v = t.therapyVariation;
+    const variationDates = getVariationDateKeys(t.startDate, v);
+    if (!variationDates.includes(today)) continue;
+    const key = `${t.id}_${today}`;
+    if (shown[key]) continue;
+    showNotification(
+      "Dyna – Terapia",
+      `Oggi la terapia "${t.name}" varia: controlla la nuova posologia.`
+    );
+    shown[key] = true;
+    saveVariationShown(shown);
+  }
+}
+
+/** Confronta il piano terapia con l'ultimo snapshot; se ci sono modifiche, mostra notifica e aggiorna snapshot. */
+export function checkTherapyChanges(plan: TherapyPlanItem[]) {
+  const prefs = loadPrefs();
+  if (!prefs.therapyChangeEnabled) return;
+  const snapshot = loadTherapySnapshot();
+  const current: TherapySnapshotState = {};
+  for (const t of plan) {
+    current[String(t.id)] = therapyToSnapshotItem(t);
+  }
+  const hasPrevious = Object.keys(snapshot).length > 0;
+  if (!hasPrevious) {
+    saveTherapySnapshot(current);
+    return;
+  }
+  const changedNames: string[] = [];
+  for (const t of plan) {
+    const prev = snapshot[String(t.id)];
+    const cur = current[String(t.id)];
+    if (prev && !snapshotEqual(prev, cur)) changedNames.push(t.name);
+  }
+  for (const id of Object.keys(snapshot)) {
+    if (!current[id]) {
+      const name = snapshot[id]?.name ?? "Terapia";
+      changedNames.push(`${name} (rimossa o modificata)`);
+    }
+  }
+  if (changedNames.length === 0) {
+    saveTherapySnapshot(current);
+    return;
+  }
+  const body =
+    changedNames.length === 1
+      ? `Modifica a "${changedNames[0]}". Controlla il piano.`
+      : `Modifiche a ${changedNames.length} terapie: ${changedNames.slice(0, 3).join(", ")}${changedNames.length > 3 ? "…" : ""}. Controlla il piano.`;
+  showNotification("Dyna – Terapia aggiornata", body);
+  saveTherapySnapshot(current);
 }
