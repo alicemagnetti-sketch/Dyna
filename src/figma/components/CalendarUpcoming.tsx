@@ -2,7 +2,7 @@
 /* Widget Terapie di oggi: solo farmaci da assumere oggi, dose solo orali, orario/giorno-notte se impostato */
 
 import { useMemo, useState } from "react";
-import { CalendarClock, Pencil, ChevronDown, ChevronUp } from "lucide-react";
+import { CalendarClock, Pencil, Trash2, ChevronDown, ChevronUp } from "lucide-react";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
 import { useDayEntries } from "@/context/DayEntriesContext";
@@ -30,11 +30,11 @@ interface CalendarUpcomingProps {
 }
 
 export function CalendarUpcoming({ onEditAppointment }: CalendarUpcomingProps) {
-  const { entries } = useDayEntries();
+  const { entries, getEntry, setEntry } = useDayEntries();
   const { plan } = useTherapyPlan();
   const today = new Date();
   const upcomingList = useMemo(
-    () => getUpcomingAppointments(entries),
+    () => getUpcomingAppointments(entries, 3650),
     [entries]
   );
   const [appointmentsExpanded, setAppointmentsExpanded] = useState(false);
@@ -56,7 +56,7 @@ export function CalendarUpcoming({ onEditAppointment }: CalendarUpcomingProps) {
         <p className="text-sm text-gray-400 italic py-1">Nessun appuntamento in programma</p>
       ) : (
         <div className="space-y-2">
-          {(appointmentsExpanded ? upcomingList : upcomingList.slice(0, 1)).map((item) => (
+          {(appointmentsExpanded ? upcomingList : upcomingList.slice(0, 2)).map((item) => (
             <div
               key={`${item.dateKey}-${item.appointment.id}`}
               className="w-full flex items-start gap-3 p-3 rounded-2xl bg-gray-50 text-left group"
@@ -74,19 +74,36 @@ export function CalendarUpcoming({ onEditAppointment }: CalendarUpcomingProps) {
                   <p className="text-xs text-gray-500 mt-0.5">{item.appointment.place}</p>
                 )}
               </div>
-              {onEditAppointment && (
+              <div className="flex items-center gap-1 shrink-0">
+                {onEditAppointment && (
+                  <button
+                    type="button"
+                    onClick={() => onEditAppointment(item.dateKey, item.appointment)}
+                    className="p-2 rounded-full text-[#14443F] opacity-70 hover:opacity-100 hover:bg-gray-100 transition-colors"
+                    aria-label="Modifica appuntamento"
+                  >
+                    <Pencil size={18} />
+                  </button>
+                )}
                 <button
                   type="button"
-                  onClick={() => onEditAppointment(item.dateKey, item.appointment)}
-                  className="shrink-0 p-2 rounded-full text-[#14443F] opacity-70 hover:opacity-100 hover:bg-gray-100 transition-colors"
-                  aria-label="Modifica appuntamento"
+                  onClick={() => {
+                    const date = parseDateKey(item.dateKey);
+                    const entry = getEntry(date);
+                    setEntry(date, {
+                      ...entry,
+                      appointments: (entry.appointments ?? []).filter((a) => a.id !== item.appointment.id),
+                    });
+                  }}
+                  className="p-2 rounded-full text-[#14443F] opacity-70 hover:opacity-100 hover:bg-gray-100 transition-colors"
+                  aria-label="Elimina appuntamento"
                 >
-                  <Pencil size={18} />
+                  <Trash2 size={18} />
                 </button>
-              )}
+              </div>
             </div>
           ))}
-          {upcomingList.length > 1 && (
+          {upcomingList.length > 2 && (
             <button
               type="button"
               onClick={() => setAppointmentsExpanded((e) => !e)}
@@ -95,13 +112,13 @@ export function CalendarUpcoming({ onEditAppointment }: CalendarUpcomingProps) {
             >
               {appointmentsExpanded ? (
                 <>
-                  <ChevronUp size={18} />
                   Mostra meno
+                  <ChevronUp size={18} />
                 </>
               ) : (
                 <>
+                  Mostra tutti gli appuntamenti ({upcomingList.length})
                   <ChevronDown size={18} />
-                  Vedi tutti ({upcomingList.length})
                 </>
               )}
             </button>
